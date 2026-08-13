@@ -73,3 +73,12 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+#Content FAB
+Content/Fab/*
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+Packages/

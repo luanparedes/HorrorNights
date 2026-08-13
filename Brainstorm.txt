@@ -1,0 +1,109 @@
+Horror Nights
+Brainstorm
+
+Níveis (Escolhido pelo criador do server):
+	- Fácil
+		- É possível correr dos monstros
+		- Menos tempo para finalizar tarefas
+		- Mais energia.
+	- Normal
+		- Monstros da mesma velocidade.
+		- Tempo padrão de conclusão de tarefas.
+		- Energia básica.
+	- Difícil
+		- Monstros mais rápidos que os personagens.
+		- Mais tempo para finalizar tarefas e mais matéria prima gasta.
+		- Energia reduzida.
+		
+- Todas as classes podem fazer tudo, mas as classes especializadas, fazem melhor.
+
+- Classes especiais:
+	- Cientista (Na oficina, faz as coisas mais rápido e com menos matéria prima)
+	- Soldado (Mais forte, consegue usar mais armas)
+	- Mago (Pode usar magias variadas)
+	- Corredor (Corre bem mais rápido que os outros)
+	- Chef (Consegue cozinhar mais rápido com menos matéria prima)
+	- Médico (Cura com mais velocidade e consegue ressucitar pessoas em alguns casos)
+	- Piloto (Pode dirigir qualquer transporte e dirige mais rápido)
+	- Pulador (Pula muito alto)
+	- Médium (Detecta onde estão os monstros)
+
+- Todos os itens entrarão no inventário.
+	- Inventário inicial terá 5 espaços.
+
+- Um dia completo durará 10 minutos.
+	- 5 minutos de dia.
+	- 5 minutos de noite.
+	
+- Sempre começar o jogo na cabana principal.
+
+- Terão sempre 6 tipos de árvores diferente no cenário
+	- Cada árvore terá apenas uma no mapa, com um item especial
+		- Preta
+		- Branca
+		- Azul
+		- Vermelha
+		- Amarela
+		- Rosa
+		
+- Na noite, terá o ataque dos "Viajantes sem alma".
+
+- Na noite, têm que se abrigar para que os Viajantes sem alma não os mate.
+
+- Abrigos são:
+	- Cabanas
+	- Perto de fogueiras enquanto estiver iluminado.
+	- Debaixo de árvores especiais coloridas
+	
+- Os Viajantes sem alma odeiam água.
+
+- Enquanto chove, poderá sair a noite.
+
+- Os viajantes sem alma podem criar ilusões para os enganar.
+Exemplo: Uma falsa chuva para fazer você sair e ser pego; Um carro aparecendo do lado de fora; etc.
+
+- Baús espalhados pelo cenário.
+
+- Animais no cenário para derrotar e dar comida.
+
+- A cada novo dia materias primas aparecerão no cenário em locais aleatórios.
+
+
+Armas
+- Machado
+- Pistola
+- Espada
+- Arma laser
+
+Itens:
+- Madeira
+- Alcool
+- Fósforos
+- Ferro
+
+Comidas:
+- Maçã
+- Milho
+- Sopa enlatada
+- Carne pequena
+- Carne grande
+- Strogonoff
+- Churrasco
+
+Criações da oficina
+- Plantação de milho.
+- Temporizador de dia.
+- Medidor de temperatura e previsão do tempo.
+- +5 no inventário (max 30).
+- Fogueira
+- Panela
+- Motor
+- Bomba
+- Antena
+- Radar de árvore especial
+
+Magias
+- Escudo temporário
+- Bola de fogo
+- Parar o tempo
+- Curar
