@@ -29,15 +29,15 @@ void UMultiplayerSessionsSubsystem::Login()
         return;
     }
 
+    LoginCompleteDelegate = FOnLoginCompleteDelegate::CreateUObject(this, &UMultiplayerSessionsSubsystem::OnLoginComplete);
+    LoginCompleteDelegateHandle = IdentityInterface->AddOnLoginCompleteDelegate_Handle(0, LoginCompleteDelegate);
+
     if (IdentityInterface->GetLoginStatus(0) == ELoginStatus::LoggedIn)
     {
         bIsLoggedIn = true;
         OnLoginStatusChanged.Broadcast(true);
         return;
     }
-
-    LoginCompleteDelegate = FOnLoginCompleteDelegate::CreateUObject(this, &UMultiplayerSessionsSubsystem::OnLoginComplete);
-    LoginCompleteDelegateHandle = IdentityInterface->AddOnLoginCompleteDelegate_Handle(0, LoginCompleteDelegate);
 
     IdentityInterface->AutoLogin(0);
 
