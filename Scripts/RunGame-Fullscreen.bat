@@ -1,0 +1,2 @@
+@echo off
+start "" "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Developer\Softwares\Unreal Engine\HorrorNights\HorrorNights.uproject" -game -log -FULLSCREEN
