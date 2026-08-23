@@ -23,10 +23,13 @@ Níveis (Escolhido pelo criador do server):
 	- Mago (Pode usar magias variadas)
 	- Corredor (Corre bem mais rápido que os outros)
 	- Chef (Consegue cozinhar mais rápido com menos matéria prima)
-	- Médico (Cura com mais velocidade e consegue ressucitar pessoas em alguns casos)
+	- Médico (Cura com mais velocidade e consegue ressuscitar pessoas em alguns casos)
 	- Piloto (Pode dirigir qualquer transporte e dirige mais rápido)
 	- Pulador (Pula muito alto)
 	- Médium (Detecta onde estão os monstros)
+
+- Jogo para 1 ou 2 jogadores, cada jogador terá duas classes que poderá trocar.
+	- Para trocar novamente terá que esperar 40 segundos.
 
 - Todos os itens entrarão no inventário.
 	- Inventário inicial terá 5 espaços.
