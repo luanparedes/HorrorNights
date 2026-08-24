@@ -6,6 +6,7 @@
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineIdentityInterface.h"
+#include "Online/OnlineSessionNames.h"
 
 void UMultiplayerSessionsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -39,7 +40,22 @@ void UMultiplayerSessionsSubsystem::Login()
         return;
     }
 
-    IdentityInterface->AutoLogin(0);
+
+    FOnlineAccountCredentials Credentials;
+    Credentials.Type = TEXT("accountportal"); // Abre o fluxo de login da conta real da Epic
+    Credentials.Id = TEXT("");
+    Credentials.Token = TEXT("");
+
+    if (!IdentityInterface->Login(0, Credentials))
+    {
+        UE_LOG(LogTemp, Error, TEXT("LoginOnline: A função Login recusou a execução imediata."));
+        IdentityInterface->ClearOnLoginCompleteDelegate_Handle(0, LoginCompleteDelegateHandle);
+    }
+
+
+
+
+    //IdentityInterface->AutoLogin(0);
 
     //TEST CODE, REMOVE AFTER TESTS PASSED
     
@@ -81,6 +97,8 @@ void UMultiplayerSessionsSubsystem::OnLoginComplete(int32 LocalUserNum, bool bWa
 
 void UMultiplayerSessionsSubsystem::CreateSession(int32 NumPublicConnections, FString MatchType)
 {
+    bIsLanSession = false;
+
     if (!bIsLoggedIn)
     {
         UE_LOG(LogTemp, Error, TEXT("CreateSession: ainda não logado no EOS. Espere OnLoginStatusChanged antes de chamar isso."));
@@ -128,7 +146,7 @@ void UMultiplayerSessionsSubsystem::CreateSession(int32 NumPublicConnections, FS
     SessionSettings->bUsesPresence = !isLan;
     SessionSettings->bUseLobbiesIfAvailable = !isLan;
 
-    SessionSettings->Set(FName("MatchType"), MatchType, EOnlineDataAdvertisementType::ViaOnlineService);
+    SessionSettings->Set(FName("MatchType"), FString("Horror"), EOnlineDataAdvertisementType::ViaOnlineService);
     SessionSettings->BuildUniqueId = 1;
 
     if (!SessionInterface->CreateSession(*UserId, NAME_GameSession, *SessionSettings))
@@ -139,29 +157,55 @@ void UMultiplayerSessionsSubsystem::CreateSession(int32 NumPublicConnections, FS
 
 void UMultiplayerSessionsSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-    IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+    // 1. Pega o subsistema CORRETO baseado no que tentamos criar
+    IOnlineSubsystem* Subsystem = bIsLanSession ? IOnlineSubsystem::Get(TEXT("NULL")) : IOnlineSubsystem::Get();
+
     if (Subsystem)
     {
         SessionInterface = Subsystem->GetSessionInterface();
         if (SessionInterface.IsValid())
         {
+            // Limpa o delegate do lugar certo!
             SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegateHandle);
         }
     }
 
     if (bWasSuccessful)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Sessão EOS criada com sucesso!"));
-        GetGameInstance()->GetWorld()->ServerTravel("/Game/Maps/Level_1-1?listen");
+        if (bIsLanSession)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Sessão LAN criada com sucesso. Abrindo mapa via rede local..."));
+            // O segredo do LAN: passamos ?bIsLanMatch=1 para a Unreal não exigir a Epic
+            GetGameInstance()->GetWorld()->ServerTravel("/Game/Maps/Level_1-1?listen?bIsLanMatch=1");
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Sessão EOS criada com sucesso. Exigindo autenticação Epic..."));
+            if (IdentityInterface.IsValid())
+            {
+                TSharedPtr<const FUniqueNetId> UserId = IdentityInterface->GetUniquePlayerId(0);
+                if (UserId.IsValid())
+                {
+                    FString TravelURL = FString::Printf(TEXT("/Game/Maps/Level_1-1?listen?EpicUsername=%s"), *UserId->ToString());
+                    GetGameInstance()->GetWorld()->ServerTravel(TravelURL);
+                    return;
+                }
+            }
+
+            // Fallback caso a Identity falhe
+            GetGameInstance()->GetWorld()->ServerTravel("/Game/Maps/Level_1-1?listen");
+        }
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("Falha ao criar sessão EOS!"));
+        UE_LOG(LogTemp, Error, TEXT("Falha ao criar sessão!"));
     }
 }
 
 void UMultiplayerSessionsSubsystem::CreateLANSession(int32 NumPublicConnections, FString MatchType)
 {
+	bIsLanSession = true;
+
     IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get(TEXT("NULL"));
     if (!Subsystem)
     {
@@ -262,6 +306,7 @@ void UMultiplayerSessionsSubsystem::FindSessions(int32 MaxSearchResults)
     LastSessionSearch->bIsLanQuery = false;
 
     LastSessionSearch->QuerySettings.Set(FName("MatchType"), FString("Horror"), EOnlineComparisonOp::Equals);
+    LastSessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
 
     if (!SessionInterface->FindSessions(*UserId, LastSessionSearch.ToSharedRef()))
     {
@@ -282,11 +327,87 @@ void UMultiplayerSessionsSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 
     if (bWasSuccessful && LastSessionSearch.IsValid() && LastSessionSearch->SearchResults.Num() > 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Encontrei %d sessões na nuvem!"), LastSessionSearch->SearchResults.Num());
+        // Salva a primeira sala encontrada na variável da classe
+        HostFoundSession = LastSessionSearch->SearchResults[0];
+        UE_LOG(LogTemp, Warning, TEXT("Sala salva com sucesso! Pronta para o Join."));
+
+        JoinSession();
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Nenhuma sessão encontrada ou falha na busca."));
+    }
+}
+
+void UMultiplayerSessionsSubsystem::JoinSession()
+{
+    UE_LOG(LogTemp, Warning, TEXT("=== ENTRANDO NO JOIN SESSION ==="));
+
+    IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+    if (!Subsystem) { UE_LOG(LogTemp, Error, TEXT("JoinSession: Subsystem nulo")); return; }
+
+    SessionInterface = Subsystem->GetSessionInterface();
+    if (!SessionInterface.IsValid()) { UE_LOG(LogTemp, Error, TEXT("JoinSession: SessionInterface inválido")); return; }
+
+    // ---- FIX: limpa qualquer sessão "GameSession" fantasma antes de tentar entrar ----
+    auto ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
+    if (ExistingSession != nullptr)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("JoinSession: já existia uma GameSession local, destruindo antes de entrar."));
+        SessionInterface->DestroySession(NAME_GameSession);
+    }
+    // -----------------------------------------------------------------------------
+
+    IOnlineIdentityPtr IdentityPtr = Subsystem->GetIdentityInterface();
+    if (!IdentityPtr.IsValid()) { UE_LOG(LogTemp, Error, TEXT("JoinSession: IdentityPtr inválido")); return; }
+
+    const TSharedPtr<const FUniqueNetId> UserId = IdentityPtr->GetUniquePlayerId(0);
+    if (!UserId.IsValid()) { UE_LOG(LogTemp, Error, TEXT("JoinSession: UserId inválido")); return; }
+
+    JoinSessionCompleteDelegate = FOnJoinSessionCompleteDelegate::CreateUObject(this, &UMultiplayerSessionsSubsystem::OnJoinSessionComplete);
+    JoinSessionCompleteDelegateHandle = SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
+
+    if (!SessionInterface->JoinSession(*UserId, NAME_GameSession, HostFoundSession))
+    {
+        UE_LOG(LogTemp, Error, TEXT("JoinSession: A função JoinSession retornou FALSE! Falha ao iniciar."));
+        SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("JoinSession disparado com sucesso, aguardando callback de conclusão..."));
+    }
+}
+
+void UMultiplayerSessionsSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+{
+    IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+    if (Subsystem)
+    {
+        SessionInterface = Subsystem->GetSessionInterface();
+        if (SessionInterface.IsValid())
+        {
+            SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegateHandle);
+        }
+    }
+
+    if (Result == EOnJoinSessionCompleteResult::Success)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Join realizado com sucesso! Obtendo endereço de viagem..."));
+
+        FString ConnectString;
+        if (SessionInterface.IsValid() && SessionInterface->GetResolvedConnectString(SessionName, ConnectString))
+        {
+            APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
+            if (PlayerController)
+            {
+                // Viaja automaticamente para o IP/Porta resolvido pelo EOS
+                PlayerController->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
+            }
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Falha ao entrar na sessão. Erro ID: %d"), static_cast<int32>(Result));
     }
 }
 

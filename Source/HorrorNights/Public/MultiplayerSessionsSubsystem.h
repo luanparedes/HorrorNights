@@ -4,9 +4,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "OnlineSessionSettings.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Interfaces/OnlineIdentityInterface.h"
+#include "FindSessionsCallbackProxy.h"
 #include "MultiplayerSessionsSubsystem.generated.h"
 
 // A UI pode dar Bind neste evento pra saber quando o login no EOS terminou
@@ -20,6 +22,7 @@ class HORRORNIGHTS_API UMultiplayerSessionsSubsystem : public UGameInstanceSubsy
 
 public:
     TSharedPtr<FOnlineSessionSearch> LastSessionSearch;
+    FOnlineSessionSearchResult HostFoundSession;
 
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
@@ -32,6 +35,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Multiplayer Sessions")
     void FindSessions(int32 MaxSearchResults);
 
+	UFUNCTION(BlueprintCallable, Category = "Multiplayer Sessions")
+    void JoinSession();
+
     UFUNCTION(BlueprintCallable, Category = "Multiplayer Sessions")
     void JoinServerByIP(FString Address);
 
@@ -42,24 +48,28 @@ public:
     FOnMultiplayerLoginStatusChanged OnLoginStatusChanged;
 
     //Delegates
+    void OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
     void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
     void OnFindSessionsComplete(bool bWasSuccessful);
+    void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 
 protected:
     bool bIsLoggedIn = false;
+	bool bIsLanSession = false;
 
     void Login();
-    void OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
 
     IOnlineSessionPtr SessionInterface;
     IOnlineIdentityPtr IdentityInterface;
 
+    FOnLoginCompleteDelegate LoginCompleteDelegate;
+    FDelegateHandle LoginCompleteDelegateHandle;
     FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
     FDelegateHandle CreateSessionCompleteDelegateHandle;
     FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
     FDelegateHandle FindSessionsCompleteDelegateHandle;
-    FOnLoginCompleteDelegate LoginCompleteDelegate;
-    FDelegateHandle LoginCompleteDelegateHandle;
+    FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
+    FDelegateHandle JoinSessionCompleteDelegateHandle;
 
 private:
     void PrintString(const FString& text);
