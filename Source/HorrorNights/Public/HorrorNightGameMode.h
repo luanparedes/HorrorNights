@@ -12,9 +12,14 @@ class HORRORNIGHTS_API AHorrorNightGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable)
+	void BeginPlay() override;
+
+	/*UFUNCTION(BlueprintCallable)
 	void HostLanGame();
 	
 	UFUNCTION(BlueprintCallable)
-	void JoinLanGame();
+	void JoinLanGame();*/
+
+private:
+	void ConfigureGraphics();
 };

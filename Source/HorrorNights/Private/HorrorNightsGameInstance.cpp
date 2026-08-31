@@ -16,12 +16,7 @@ void UHorrorNightsGameInstance::ConfigureGraphics()
 
 	if (UserSettings)
 	{
-		if (UserSettings->GetVisualEffectQuality() == 0)
-		{
-			//TODO: Deactivate some actors or components to improve performance
-		}
-		UserSettings->RunHardwareBenchmark();
-		UserSettings->ApplyHardwareBenchmarkResults();
-		UserSettings->ApplySettings(false);
+        UserSettings->SetOverallScalabilityLevel(1);
+        UserSettings->ApplySettings(true);
 	}
 }
