@@ -8,7 +8,7 @@ public class HorrorNights : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils", "RHI" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 

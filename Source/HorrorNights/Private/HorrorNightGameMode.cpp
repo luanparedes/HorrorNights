@@ -2,10 +2,9 @@
 
 
 #include "HorrorNightGameMode.h"
-#include "EngineUtils.h"
-#include "Engine/SkyLight.h"
-#include "Engine/TextureCube.h"
-#include "Components/SkyLightComponent.h"
+#include "RHI.h"
+#include "RenderQualityInterface.h"
+#include "Kismet/GameplayStatics.h"
 
 //void AHorrorNightGameMode::HostLanGame() 
 //{
@@ -29,29 +28,38 @@ void AHorrorNightGameMode::BeginPlay()
 
 void AHorrorNightGameMode::ConfigureGraphics()
 {
-//
-//    for (TActorIterator<ASkyLight> It(GetWorld()); It; ++It)
-//    {
-//        ASkyLight* sky = *It;
-//        if (sky && sky->GetLightComponent())
-//        {
-//#if PLATFORM_ANDROID
-//            sky->GetLightComponent()->bRealTimeCapture = false;
-//            sky->GetLightComponent()->SourceType = ESkyLightSourceType::SLS_SpecifiedCubemap;
-//
-//            FString texturePath = TEXT("/Engine/MapTemplates/daylight.daylight");
-//            UTextureCube* loadedTexture = LoadObject<UTextureCube>(nullptr, *texturePath);
-//
-//            if (loadedTexture)
-//            {
-//                sky->GetLightComponent()->Cubemap = loadedTexture;
-//            }
-//#else
-//            sky->GetLightComponent()->bRealTimeCapture = true;
-//            sky->GetLightComponent()->SourceType = ESkyLightSourceType::SLS_CapturedScene;
-//#endif
-//
-//            sky->GetLightComponent()->RecaptureSky();
-//        }
-//    }
+	const bool bHasSM5 = GMaxRHIFeatureLevel >= ERHIFeatureLevel::SM5;
+
+	if (bHasSM5)
+	{
+        UE_LOG(LogTemp, Log, TEXT("Rendering: SM5 detected - using advanced pipeline"));
+		SetupHighEndRendering();
+	}
+	else
+	{
+        UE_LOG(LogTemp, Log, TEXT("Rendering: fallback ES3.1 - using lower mobile pipeline."));
+		SetupFallbackRendering();
+	}
+}
+
+void AHorrorNightGameMode::SetupHighEndRendering()
+{
+    TArray<AActor*> FoundActors;
+    UGameplayStatics::GetAllActorsWithInterface(GetWorld(), URenderQualityInterface::StaticClass(), FoundActors);
+
+    for (AActor* Actor : FoundActors)
+    {
+        IRenderQualityInterface::Execute_OnHighEndRenderingEnabled(Actor);
+    }
+}
+
+void AHorrorNightGameMode::SetupFallbackRendering()
+{
+    TArray<AActor*> FoundActors;
+    UGameplayStatics::GetAllActorsWithInterface(GetWorld(), URenderQualityInterface::StaticClass(), FoundActors);
+
+    for (AActor* Actor : FoundActors)
+    {
+        IRenderQualityInterface::Execute_OnFallbackRenderingEnabled(Actor);
+    }
 }

@@ -12,13 +12,17 @@ class HORRORNIGHTS_API AHorrorNightGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 
 	/*UFUNCTION(BlueprintCallable)
 	void HostLanGame();
 	
 	UFUNCTION(BlueprintCallable)
 	void JoinLanGame();*/
+
+protected:
+	void SetupHighEndRendering();
+	void SetupFallbackRendering();
 
 private:
 	void ConfigureGraphics();
