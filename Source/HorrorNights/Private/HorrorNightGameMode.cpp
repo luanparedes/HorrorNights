@@ -2,28 +2,60 @@
 
 
 #include "HorrorNightGameMode.h"
+#include "CharacterState.h"
+#include "PlayerClassData.h"
 #include "RHI.h"
 #include "RenderQualityInterface.h"
 #include "Kismet/GameplayStatics.h"
-
-//void AHorrorNightGameMode::HostLanGame() 
-//{
-//	GetWorld()->ServerTravel("/Game/Maps/Level_1-1?listen");
-//}
-//
-//void AHorrorNightGameMode::JoinLanGame() 
-//{
-//	APlayerController* pcPlayer = GetGameInstance()->GetFirstLocalPlayerController();
-//	if (pcPlayer)
-//	{
-//		pcPlayer->ClientTravel("192.168.0.14", ETravelType::TRAVEL_Absolute);
-//	}
-//}
+#include "Math/UnrealMathUtility.h"
 
 void AHorrorNightGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	ConfigureGraphics();
+}
+
+UClass* AHorrorNightGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	if (InController != nullptr && InController->PlayerState != nullptr)
+	{
+		ACharacterState* characterState = Cast<ACharacterState>(InController->PlayerState);
+
+		if (characterState != nullptr)
+		{
+			if (characterState->SortedCharacter != nullptr)
+			{
+				if (characterState->SortedCharacter->CharacterBlueprint != nullptr)
+				{
+					return characterState->SortedCharacter->CharacterBlueprint;
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("There's no character blueprint configured for the sorted character!"));
+				}
+			}
+		}
+	}
+
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
+}
+
+void AHorrorNightGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	if (NewPlayer != nullptr && NewPlayer->PlayerState != nullptr)
+	{
+		ACharacterState* characterState = Cast<ACharacterState>(NewPlayer->PlayerState);
+
+		if (characterState != nullptr && AvailableClasses.Num() > 0)
+		{
+			int32 sortedIndex = FMath::RandRange(0, AvailableClasses.Num() - 1);
+			characterState->SortedCharacter = AvailableClasses[sortedIndex];
+
+			UE_LOG(LogTemp, Warning, TEXT("Sorted player with index: %d"), sortedIndex);
+		}
+	}
+
+	Super::PostLogin(NewPlayer);
 }
 
 void AHorrorNightGameMode::ConfigureGraphics()
