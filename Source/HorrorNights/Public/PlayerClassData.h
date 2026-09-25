@@ -16,6 +16,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSubclassOf<class ACharacter> CharacterBlueprint;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	class UTexture2D* CharacterPhoto;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FText CharacterName;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 HP;
 

@@ -21,6 +21,9 @@ class HORRORNIGHTS_API APlayerCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	UPlayerStatsComponent* PlayerStats;
+
 	APlayerCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void PossessedBy(AController* NewController) override;
@@ -35,9 +38,6 @@ protected:
 	void Look(const FInputActionValue& Value);
 
 private:
-	UPROPERTY(EditAnywhere, Category = "Player Stats")
-	UPlayerStatsComponent* PlayerStats;
-
 	UPROPERTY(EditAnywhere)
 	USpringArmComponent* CameraBoom;
 

@@ -21,8 +21,9 @@ void UPlayerStatsComponent::InitializeStats()
 		CurrentEnergy = CurrentClassData->Energy;
 		CurrentInventory = CurrentClassData->Inventory;
 		CurrentHabilities = CurrentClassData->Habilities;
+		FString test = CurrentClassData->CharacterBlueprint->GetName();
 
-		UE_LOG(LogTemp, Warning, TEXT("Initial Status! Max HP: %d and Max Energy: %d"), CurrentHP, CurrentEnergy);
+		UE_LOG(LogTemp, Warning, TEXT("Class %s Initial Status! Max HP: %d and Max Energy: %d"), *test, CurrentHP, CurrentEnergy);
 	}
 	else
 	{

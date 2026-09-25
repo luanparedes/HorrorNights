@@ -17,24 +17,52 @@ void AHorrorNightGameMode::BeginPlay()
 
 UClass* AHorrorNightGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
 {
-	if (InController != nullptr && InController->PlayerState != nullptr)
-	{
-		ACharacterState* characterState = Cast<ACharacterState>(InController->PlayerState);
+	UE_LOG(LogTemp, Warning, TEXT(">>> GetDefaultPawnClass FOI CHAMADA <<<"));
 
-		if (characterState != nullptr)
+	if (InController == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Vazou de fininho: Controller eh nulo!"));
+		return Super::GetDefaultPawnClassForController_Implementation(InController);
+	}
+
+	if (InController->PlayerState == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Vazou de fininho: PlayerState eh nulo!"));
+		return Super::GetDefaultPawnClassForController_Implementation(InController);
+	}
+
+	ACharacterState* characterState = Cast<ACharacterState>(InController->PlayerState);
+	if (characterState == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Vazou de fininho: O Cast pro seu CharacterState falhou!"));
+		return Super::GetDefaultPawnClassForController_Implementation(InController);
+	}
+
+	if (characterState->SortedCharacter == nullptr)
+	{
+		if (AvailableClasses.Num() > 0)
 		{
-			if (characterState->SortedCharacter != nullptr)
-			{
-				if (characterState->SortedCharacter->CharacterBlueprint != nullptr)
-				{
-					return characterState->SortedCharacter->CharacterBlueprint;
-				}
-				else
-				{
-					UE_LOG(LogTemp, Warning, TEXT("There's no character blueprint configured for the sorted character!"));
-				}
-			}
+			int32 sortedIndex = FMath::RandRange(0, AvailableClasses.Num() - 1);
+			characterState->SortedCharacter = AvailableClasses[sortedIndex];
+			UE_LOG(LogTemp, Warning, TEXT("Sorteio feito na hora H! Personagem Index: %d"), sortedIndex);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Erro: A lista AvailableClasses ta VAZIA!"));
+			return Super::GetDefaultPawnClassForController_Implementation(InController);
+		}
+	}
+
+	if (characterState->SortedCharacter->CharacterBlueprint != nullptr)
+	{
+		FString NomeDoBP = characterState->SortedCharacter->CharacterBlueprint->GetName();
+		UE_LOG(LogTemp, Warning, TEXT("SUCCESS loading player: %s"), *NomeDoBP);
+
+		return characterState->SortedCharacter->CharacterBlueprint;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Erro: O Data Asset sorteado nao tem um CharacterBlueprint configurado nele."));
 	}
 
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
@@ -42,19 +70,6 @@ UClass* AHorrorNightGameMode::GetDefaultPawnClassForController_Implementation(AC
 
 void AHorrorNightGameMode::PostLogin(APlayerController* NewPlayer)
 {
-	if (NewPlayer != nullptr && NewPlayer->PlayerState != nullptr)
-	{
-		ACharacterState* characterState = Cast<ACharacterState>(NewPlayer->PlayerState);
-
-		if (characterState != nullptr && AvailableClasses.Num() > 0)
-		{
-			int32 sortedIndex = FMath::RandRange(0, AvailableClasses.Num() - 1);
-			characterState->SortedCharacter = AvailableClasses[sortedIndex];
-
-			UE_LOG(LogTemp, Warning, TEXT("Sorted player with index: %d"), sortedIndex);
-		}
-	}
-
 	Super::PostLogin(NewPlayer);
 }
 

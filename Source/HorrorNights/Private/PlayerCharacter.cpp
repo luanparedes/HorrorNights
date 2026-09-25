@@ -35,8 +35,6 @@ void APlayerCharacter::BeginPlay()
 			subsystem->AddMappingContext(InputMapping, 0);
 		}
 	}
-
-	GetPlayerInitialStats();
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
