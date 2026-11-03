@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "PlayerClassData.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "PlayerStatsComponent.generated.h"
 
 
@@ -19,17 +20,29 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Class")
 	UPlayerClassData* CurrentClassData;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
-	int32 CurrentHP;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 HP;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
-	int32 CurrentEnergy;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 Energy;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Inventory")
-	TArray<FName> CurrentInventory;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 AttackPower;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Habilities")
-	TArray<FName> CurrentHabilities;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 DefensePower;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 Smartness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 MagicAttack;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 Speed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Stats")
+	int32 JumpStat;
 
 	UFUNCTION(BlueprintCallable, Category = "Status")
 	void InitializeStats();

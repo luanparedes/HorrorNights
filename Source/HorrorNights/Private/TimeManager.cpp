@@ -13,49 +13,141 @@ ATimeManager::ATimeManager()
 void ATimeManager::BeginPlay()
 {
 	Super::BeginPlay();	
+
+	if (GoodSkyActor)
+	{
+		FScriptDelegate StartNightDelegate;
+		FScriptDelegate StartDayDelegate;
+		StartNightDelegate.BindUFunction(this, "StartNight");
+		StartDayDelegate.BindUFunction(this, "StartDay");
+
+		if (FMulticastDelegateProperty* DelegateProperty = FindFProperty<FMulticastDelegateProperty>(GoodSkyActor->GetClass(), FName("NightBeginEvent")))
+		{
+			if (FMulticastScriptDelegate* MulticastDelegate = DelegateProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(GoodSkyActor))
+			{
+				MulticastDelegate->AddUnique(StartNightDelegate);
+			}
+		}
+
+		if (FMulticastDelegateProperty* DelegateProperty = FindFProperty<FMulticastDelegateProperty>(GoodSkyActor->GetClass(), FName("DayBeginEvent")))
+		{
+			if (FMulticastScriptDelegate* MulticastDelegate = DelegateProperty->ContainerPtrToValuePtr<FMulticastScriptDelegate>(GoodSkyActor))
+			{
+				MulticastDelegate->AddUnique(StartDayDelegate);
+			}
+		}
+	}
+
+	// Lua começa apagada, só aparece com o fade da noite
+	if (MoonLight)
+	{
+		MoonLight->GetLightComponent()->SetIntensity(0.f);
+		MoonLight->GetLightComponent()->SetVisibility(false);
+		RefreshSunLight();
+	}
 }
 
 void ATimeManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (SunLight && MoonLight && SkyLight)
+	if (MoonLight)
 	{
-		ULightComponent* SunLightComponent = SunLight->GetLightComponent();
-		ULightComponent* MoonLightComponent = MoonLight->GetLightComponent();
-		USkyLightComponent* SkyLightComponent = SkyLight->GetLightComponent();
+		ULightComponent* Moon = MoonLight->GetLightComponent();
+		const float Speed = MoonMaxIntensity / FMath::Max(FadeDuration, KINDA_SMALL_NUMBER);
+		const float NewIntensity = FMath::FInterpConstantTo(Moon->Intensity, MoonTargetIntensity, DeltaTime, Speed);
 
-		if (SunLightComponent && MoonLightComponent && SkyLightComponent)
+		if (!FMath::IsNearlyEqual(NewIntensity, Moon->Intensity))
 		{
-			float SunPitch = SunLight->GetActorRotation().Pitch;
+			Moon->SetIntensity(NewIntensity);
+		}
 
-			FVector2D RangeTransition(-15.0f, 5.0f);
-
-			// Mapeamos a intensidade máxima e mínima de cada luz
-			// DICA: Ajuste esses números iniciais (10.0, 2.0) pro que ficar bonito na sua floresta
-			FVector2D RangeSun(10.0f, 0.0f);       // Sol vai de 10 até 0
-			FVector2D RangeMoon(0.0f, 2.0f);       // Lua vai de 0 até 2
-			FVector2D RangeSky(1.0f, 0.02f);       // SkyLight vai de 1 (dia) até 0.02 (breu da noite)
-
-			// Calcula a intensidade exata para esse exato frame de forma suave
-			float NewIntensitySun = FMath::GetMappedRangeValueClamped(RangeTransition, RangeSun, SunPitch);
-			float NewIntensityMoon = FMath::GetMappedRangeValueClamped(RangeTransition, RangeMoon, SunPitch);
-			float NewIntensitySky = FMath::GetMappedRangeValueClamped(RangeTransition, RangeSky, SunPitch);
-
-			// Aplica as intensidades
-			SunLightComponent->SetIntensity(NewIntensitySun);
-			MoonLightComponent->SetIntensity(NewIntensityMoon);
-			SkyLightComponent->SetIntensity(NewIntensitySky);
-
-			// OTIMIZAÇÃO MOBILE (Onde a mágica do FPS acontece):
-			// Se a luz zerou, a gente corta a visibilidade pra GPU não calcular sombras à toa.
-			// Se for maior que zero, a gente liga de volta.
-			SunLightComponent->SetVisibility(NewIntensitySun > 0.0f);
-			MoonLightComponent->SetVisibility(NewIntensityMoon > 0.0f);
-
-			// A SkyLight nunca zera (fica no mínimo 0.02), então garantimos ela sempre visível
-			SkyLightComponent->SetVisibility(true);
+		// Ao terminar o fade-out, desliga de vez para não influenciar o dia
+		if (NewIntensity <= KINDA_SMALL_NUMBER && MoonTargetIntensity <= 0.f && Moon->IsVisible())
+		{
+			Moon->SetVisibility(false);
+			RefreshSunLight();
 		}
 	}
 }
 
+void ATimeManager::RefreshSunLight()
+{
+	// Com Forward Shading só existe uma luz direcional principal; ao esconder a lua
+	// o slot fica vazio e o sol só volta a ocupá-lo quando é registrado de novo
+	if (SunLight)
+	{
+		SunLight->GetLightComponent()->MarkRenderStateDirty();
+	}
+}
+
+void ATimeManager::StartNight()
+{
+	ShowChangeTimeMessage(TEXT("It's night! Be careful!"));
+
+	//if (SunLight)
+	//{
+	//	SunLight->GetLightComponent()->SetVisibility(false);
+	//}
+	if (MoonLight)
+	{
+		ULightComponent* Moon = MoonLight->GetLightComponent();
+		if (!Moon->IsVisible())
+		{
+			Moon->SetIntensity(0.f);
+			Moon->SetVisibility(true);
+		}
+		MoonTargetIntensity = MoonMaxIntensity;
+	}
+	//if (SkyLight)
+	//{
+	//	SkyLight->GetLightComponent()->SetVisibility(false);
+	//	SkyLight->GetLightComponent()->SetIntensity(0.2f);
+	//}
+	if (EnemySpawner)
+	{
+		EnemySpawner->BeginNight();
+	}
+}
+
+void ATimeManager::StartDay()
+{
+	ShowChangeTimeMessage(TEXT("Day has begun!"));
+
+	//if (SunLight)
+	//{
+	//	SunLight->GetLightComponent()->SetVisibility(true);
+	//}
+	MoonTargetIntensity = 0.f;
+	//if (SkyLight)
+	//{
+	//	SkyLight->GetLightComponent()->SetVisibility(true);
+	//	SkyLight->GetLightComponent()->SetIntensity(0.4f);
+	//	SkyLight->GetLightComponent()->RecaptureSky();
+	//}
+	if (EnemySpawner)
+	{
+		EnemySpawner->BeginDay();
+	}
+}
+
+void ATimeManager::ShowChangeTimeMessage(const FString& Message)
+{
+	if (!ChangeTimeMessageWidget)
+	{
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			ChangeTimeMessageWidget = CreateWidget<UChangeTimeMessageWidget>(PC, MessageWidgetClass);
+
+			if (ChangeTimeMessageWidget)
+			{
+				ChangeTimeMessageWidget->AddToViewport();
+			}
+		}
+	}
+
+	if (ChangeTimeMessageWidget)
+	{
+		ChangeTimeMessageWidget->SetMessageText(Message);
+	}
+}

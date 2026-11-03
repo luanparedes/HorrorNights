@@ -26,7 +26,13 @@ public:
 	int32 HP;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
+	int32 MaxHP;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 Energy;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
+	int32 MaxEnergy;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 Attack;
@@ -61,6 +67,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory")
 	TArray<FName> Inventory;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Special Habilities")
-	TArray<FName> Habilities;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Special Abilities")
+	TArray<FName> Abilities;
 };

@@ -2,6 +2,7 @@
 
 
 #include "PlayerStatsComponent.h"
+#include "PlayerCharacter.h"
 
 UPlayerStatsComponent::UPlayerStatsComponent()
 {
@@ -17,13 +18,29 @@ void UPlayerStatsComponent::InitializeStats()
 {
 	if (CurrentClassData != nullptr)
 	{
-		CurrentHP = CurrentClassData->HP;
-		CurrentEnergy = CurrentClassData->Energy;
-		CurrentInventory = CurrentClassData->Inventory;
-		CurrentHabilities = CurrentClassData->Habilities;
-		FString test = CurrentClassData->CharacterBlueprint->GetName();
+		HP = CurrentClassData->HP;
+		Energy = CurrentClassData->Energy;
+		AttackPower = CurrentClassData->Attack;
+		DefensePower = CurrentClassData->Defense;
+		Smartness = CurrentClassData->Smartness;
+		MagicAttack = CurrentClassData->MagicAttack;
+		Speed = CurrentClassData->Speed;
+		JumpStat = CurrentClassData->Jump;
 
-		UE_LOG(LogTemp, Warning, TEXT("Class %s Initial Status! Max HP: %d and Max Energy: %d"), *test, CurrentHP, CurrentEnergy);
+		APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
+
+		if (PlayerCharacter)
+		{
+			UCharacterMovementComponent* MoveComp = PlayerCharacter->GetCharacterMovement();
+
+			if (MoveComp)
+			{
+				MoveComp->MaxWalkSpeed = static_cast<float>(CurrentClassData->Speed);
+				MoveComp->JumpZVelocity = static_cast<float>(CurrentClassData->Jump);
+
+				UE_LOG(LogTemp, Warning, TEXT("Status aplicados com sucesso! Speed: %f | Jump: %f"), MoveComp->MaxWalkSpeed, MoveComp->JumpZVelocity);
+			}
+		}
 	}
 	else
 	{

@@ -8,7 +8,24 @@ public class HorrorNights : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils", "RHI" });
+		PublicDependencyModuleNames.AddRange(new string[] { 
+            "Core", 
+            "CoreUObject", 
+            "Engine", 
+            "InputCore",
+            "Niagara",
+            "EnhancedInput",
+            "OnlineSubsystem", 
+            "OnlineSubsystemEOS", 
+            "OnlineSubsystemUtils", 
+            "RHI",
+            "AIModule",
+            "GameplayTasks",
+            "NavigationSystem",
+            "GameplayAbilities",
+            "GameplayTags",
+            "GameplayTasks"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
