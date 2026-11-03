@@ -16,11 +16,23 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TSubclassOf<class ACharacter> CharacterBlueprint;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	class UTexture2D* CharacterPhoto;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FText CharacterName;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 HP;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
+	int32 MaxHP;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 Energy;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
+	int32 MaxEnergy;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Status")
 	int32 Attack;
@@ -55,6 +67,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory")
 	TArray<FName> Inventory;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Special Habilities")
-	TArray<FName> Habilities;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Special Abilities")
+	TArray<FName> Abilities;
 };
