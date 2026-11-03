@@ -31,8 +31,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	void RefreshSunLight();
-
 private:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<class UChangeTimeMessageWidget> MessageWidgetClass;
@@ -54,12 +52,4 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Spawn Manager")
 	AEnemyIntelligentSpawner* EnemySpawner;
-
-	UPROPERTY(EditAnywhere, Category = "Time Manager|Fade")
-	float FadeDuration = 5.f;
-
-	UPROPERTY(EditAnywhere, Category = "Time Manager|Fade")
-	float MoonMaxIntensity = 1.f;
-
-	float MoonTargetIntensity = 0.f;
 };
