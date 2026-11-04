@@ -52,4 +52,26 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Spawn Manager")
 	AEnemyIntelligentSpawner* EnemySpawner;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	float NightSunHeight = -0.1f;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	float DaySunHeight = 0.15f;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	float DaySkyIntensity = 4.f;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	float NightSkyIntensity = 0.1f;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	FLinearColor DaySkyColor = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
+	FLinearColor NightSkyColor = FLinearColor(0.35f, 0.45f, 0.8f);
+
+	float LastDayAlpha = -1.f;
+
+	void UpdateSkyLight();
 };

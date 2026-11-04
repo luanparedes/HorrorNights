@@ -37,11 +37,52 @@ void ATimeManager::BeginPlay()
 			}
 		}
 	}
+
+	// A noite agora é feita só pelo SkyLight; a lua fica desligada.
+	// Com Forward Shading só uma luz direcional é a principal, então o sol é
+	// registrado de novo para reassumir o lugar que a lua ocupava.
+	if (MoonLight)
+	{
+		MoonLight->GetLightComponent()->SetVisibility(false);
+
+		if (SunLight)
+		{
+			SunLight->GetLightComponent()->MarkRenderStateDirty();
+		}
+	}
+
+	UpdateSkyLight();
 }
 
 void ATimeManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	UpdateSkyLight();
+}
+
+void ATimeManager::UpdateSkyLight()
+{
+	if (!SunLight || !SkyLight)
+	{
+		return;
+	}
+
+	// Direção da luz aponta para o chão; invertendo temos a altura do sol no céu
+	const float SunHeight = -SunLight->GetActorForwardVector().Z;
+	const float DayAlpha = FMath::SmoothStep(NightSunHeight, DaySunHeight, SunHeight);
+
+	if (FMath::IsNearlyEqual(DayAlpha, LastDayAlpha, 0.001f))
+	{
+		return;
+	}
+	LastDayAlpha = DayAlpha;
+
+	// Sem RecaptureSky: a captura do dia é só escurecida e azulada,
+	// assim a noite fica bem escura mas ainda dá para enxergar
+	USkyLightComponent* Sky = SkyLight->GetLightComponent();
+	Sky->SetIntensity(FMath::Lerp(NightSkyIntensity, DaySkyIntensity, DayAlpha));
+	Sky->SetLightColor(FMath::Lerp(NightSkyColor, DaySkyColor, DayAlpha));
 }
 
 void ATimeManager::StartNight()
@@ -55,11 +96,6 @@ void ATimeManager::StartNight()
 	if (MoonLight)
 	{
 		//MoonLight->GetLightComponent()->SetVisibility(true);
-	}
-	if (SkyLight)
-	{
-		//SkyLight->GetLightComponent()->SetVisibility(false);
-		SkyLight->GetLightComponent()->SetIntensity(0.02f);
 	}
 	if (EnemySpawner)
 	{
@@ -78,12 +114,6 @@ void ATimeManager::StartDay()
 	if (MoonLight)
 	{
 		//MoonLight->GetLightComponent()->SetVisibility(false);
-	}
-	if (SkyLight)
-	{
-		//SkyLight->GetLightComponent()->SetVisibility(true);
-		SkyLight->GetLightComponent()->SetIntensity(0.4f);
-		SkyLight->GetLightComponent()->RecaptureSky();
 	}
 	if (EnemySpawner)
 	{
