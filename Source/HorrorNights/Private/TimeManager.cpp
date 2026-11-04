@@ -38,72 +38,65 @@ void ATimeManager::BeginPlay()
 		}
 	}
 
-	// Lua começa apagada, só aparece com o fade da noite
+	// A noite agora é feita só pelo SkyLight; a lua fica desligada.
+	// Com Forward Shading só uma luz direcional é a principal, então o sol é
+	// registrado de novo para reassumir o lugar que a lua ocupava.
 	if (MoonLight)
 	{
-		MoonLight->GetLightComponent()->SetIntensity(0.f);
 		MoonLight->GetLightComponent()->SetVisibility(false);
-		RefreshSunLight();
+
+		if (SunLight)
+		{
+			SunLight->GetLightComponent()->MarkRenderStateDirty();
+		}
 	}
+
+	UpdateSkyLight();
 }
 
 void ATimeManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (MoonLight)
-	{
-		ULightComponent* Moon = MoonLight->GetLightComponent();
-		const float Speed = MoonMaxIntensity / FMath::Max(FadeDuration, KINDA_SMALL_NUMBER);
-		const float NewIntensity = FMath::FInterpConstantTo(Moon->Intensity, MoonTargetIntensity, DeltaTime, Speed);
-
-		if (!FMath::IsNearlyEqual(NewIntensity, Moon->Intensity))
-		{
-			Moon->SetIntensity(NewIntensity);
-		}
-
-		// Ao terminar o fade-out, desliga de vez para não influenciar o dia
-		if (NewIntensity <= KINDA_SMALL_NUMBER && MoonTargetIntensity <= 0.f && Moon->IsVisible())
-		{
-			Moon->SetVisibility(false);
-			RefreshSunLight();
-		}
-	}
+	UpdateSkyLight();
 }
 
-void ATimeManager::RefreshSunLight()
+void ATimeManager::UpdateSkyLight()
 {
-	// Com Forward Shading só existe uma luz direcional principal; ao esconder a lua
-	// o slot fica vazio e o sol só volta a ocupá-lo quando é registrado de novo
-	if (SunLight)
+	if (!SunLight || !SkyLight)
 	{
-		SunLight->GetLightComponent()->MarkRenderStateDirty();
+		return;
 	}
+
+	// Direção da luz aponta para o chão; invertendo temos a altura do sol no céu
+	const float SunHeight = -SunLight->GetActorForwardVector().Z;
+	const float DayAlpha = FMath::SmoothStep(NightSunHeight, DaySunHeight, SunHeight);
+
+	if (FMath::IsNearlyEqual(DayAlpha, LastDayAlpha, 0.001f))
+	{
+		return;
+	}
+	LastDayAlpha = DayAlpha;
+
+	// Sem RecaptureSky: a captura do dia é só escurecida e azulada,
+	// assim a noite fica bem escura mas ainda dá para enxergar
+	USkyLightComponent* Sky = SkyLight->GetLightComponent();
+	Sky->SetIntensity(FMath::Lerp(NightSkyIntensity, DaySkyIntensity, DayAlpha));
+	Sky->SetLightColor(FMath::Lerp(NightSkyColor, DaySkyColor, DayAlpha));
 }
 
 void ATimeManager::StartNight()
 {
 	ShowChangeTimeMessage(TEXT("It's night! Be careful!"));
 
-	//if (SunLight)
-	//{
-	//	SunLight->GetLightComponent()->SetVisibility(false);
-	//}
+	if (SunLight)
+	{
+		//SunLight->GetLightComponent()->SetVisibility(false);
+	}
 	if (MoonLight)
 	{
-		ULightComponent* Moon = MoonLight->GetLightComponent();
-		if (!Moon->IsVisible())
-		{
-			Moon->SetIntensity(0.f);
-			Moon->SetVisibility(true);
-		}
-		MoonTargetIntensity = MoonMaxIntensity;
+		//MoonLight->GetLightComponent()->SetVisibility(true);
 	}
-	//if (SkyLight)
-	//{
-	//	SkyLight->GetLightComponent()->SetVisibility(false);
-	//	SkyLight->GetLightComponent()->SetIntensity(0.2f);
-	//}
 	if (EnemySpawner)
 	{
 		EnemySpawner->BeginNight();
@@ -114,17 +107,14 @@ void ATimeManager::StartDay()
 {
 	ShowChangeTimeMessage(TEXT("Day has begun!"));
 
-	//if (SunLight)
-	//{
-	//	SunLight->GetLightComponent()->SetVisibility(true);
-	//}
-	MoonTargetIntensity = 0.f;
-	//if (SkyLight)
-	//{
-	//	SkyLight->GetLightComponent()->SetVisibility(true);
-	//	SkyLight->GetLightComponent()->SetIntensity(0.4f);
-	//	SkyLight->GetLightComponent()->RecaptureSky();
-	//}
+	if (SunLight)
+	{
+		//SunLight->GetLightComponent()->SetVisibility(true);
+	}
+	if (MoonLight)
+	{
+		//MoonLight->GetLightComponent()->SetVisibility(false);
+	}
 	if (EnemySpawner)
 	{
 		EnemySpawner->BeginDay();
