@@ -35,6 +35,8 @@ enum class EMaterialsItems : uint8
 	Metal		UMETA(DisplayName = "Metal"),
 	Stone		UMETA(DisplayName = "Stone"),
 	Book		UMETA(DisplayName = "Book"),
+	Seasoning	UMETA(DisplayName = "Seasoning"),
+	Beef		UMETA(DisplayName = "Beef"),
 };
 
 UENUM(BlueprintType)

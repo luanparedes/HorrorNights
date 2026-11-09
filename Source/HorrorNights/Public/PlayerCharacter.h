@@ -61,8 +61,6 @@ public:
     void ServerRPCFunction();
 
 protected:
-    bool bIsInventoryOpen = false;
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
     UAbilitySystemComponent* AbilitySystemComponent;
 
@@ -72,7 +70,18 @@ protected:
     UPROPERTY()
     UUserWidget* InventoryWidgetInstance;
 
+    bool bIsInventoryOpen = false;
+    bool bPlayerReady = false;
+    bool bCheatsApplied = false;
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "Player")
+    void OnPlayerReady();
+
+    void TryFinishSetup();
+    void TryApplyCheats();
+    virtual void NotifyControllerChanged() override;
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
 	void OpenInventory(const FInputActionValue& Value);

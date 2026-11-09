@@ -7,6 +7,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "CharacterState.h"
+#include "CheatSubsystem.h"
+#include "HorrorNightsPlayerController.h"
+#include "Engine/GameInstance.h"
 #include "AbilitySystemComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "PlayerAttributeSet.h"
@@ -35,6 +38,33 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (InventoryWidgetClass)
+	{
+		InventoryWidgetInstance = CreateWidget<UUserWidget>(GetWorld(), InventoryWidgetClass);
+	}
+
+	TryFinishSetup();
+}
+
+void APlayerCharacter::NotifyControllerChanged()
+{
+	Super::NotifyControllerChanged();
+
+	if (!HasAuthority())
+	{
+		TryFinishSetup();
+	}
+}
+
+void APlayerCharacter::TryFinishSetup()
+{
+	const bool bBegunPlay = HasActorBegunPlay() || IsActorBeginningPlay();
+
+	if (bPlayerReady || !bBegunPlay || !GetController())
+		return;
+
+	bPlayerReady = true;
+
 	if (APlayerController* playerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(playerController->GetLocalPlayer()))
@@ -43,10 +73,33 @@ void APlayerCharacter::BeginPlay()
 		}
 	}
 
-	if (InventoryWidgetClass)
+	OnPlayerReady();
+	TryApplyCheats();
+}
+
+void APlayerCharacter::TryApplyCheats()
+{
+	if (bCheatsApplied || !HasAuthority())
+		return;
+
+	if (UCheatSubsystem* cheats = GetGameInstance()->GetSubsystem<UCheatSubsystem>())
 	{
-		InventoryWidgetInstance = CreateWidget<UUserWidget>(GetWorld(), InventoryWidgetClass);
+		const AHorrorNightsPlayerController* pc = Cast<AHorrorNightsPlayerController>(GetController());
+		const bool bIsCharacterSwap = pc && pc->IsSwappingCharacter();
+
+		bCheatsApplied = true;
+		cheats->ApplyCheatsToPlayer(this, bIsCharacterSwap);
 	}
+}
+
+void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (InventoryWidgetInstance)
+	{
+		InventoryWidgetInstance->RemoveFromParent();
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -73,33 +126,26 @@ void APlayerCharacter::PossessedBy(AController* NewController)
 	{
 		if (PlayerAttributes)
 		{
-			// Status Base
 			PlayerAttributes->InitHP(PS->SortedCharacter->HP);
-			// Se o seu banco tiver uma coluna MaxHP específica, mude para PS->SortedCharacter->MaxHP
 			PlayerAttributes->InitMaxHP(PS->SortedCharacter->HP);
 			PlayerAttributes->InitEnergy(PS->SortedCharacter->Energy);
 			PlayerAttributes->InitMaxEnergy(PS->SortedCharacter->MaxEnergy);
 
-			// Atributos de Combate e Status
 			PlayerAttributes->InitAttack(PS->SortedCharacter->Attack);
 			PlayerAttributes->InitDefense(PS->SortedCharacter->Defense);
 			PlayerAttributes->InitSmartness(PS->SortedCharacter->Smartness);
 			PlayerAttributes->InitMagicAttack(PS->SortedCharacter->MagicAttack);
 
-			// Movimentação
 			PlayerAttributes->InitSpeed(PS->SortedCharacter->Speed);
 			PlayerAttributes->InitJump(PS->SortedCharacter->Jump);
 
-			// Multiplicadores (Tempo de magia, cura, cozinha e velocidade do Ford Focus)
 			PlayerAttributes->InitWaitMagicTimeMultiplier(PS->SortedCharacter->WaitMagicTimeMultiplier);
 			PlayerAttributes->InitHealTimeMultiplier(PS->SortedCharacter->HealTimeMultiplier);
 			PlayerAttributes->InitCookingTimeMultiplier(PS->SortedCharacter->CookingTimeMultiplier);
 			PlayerAttributes->InitDriveVelocityMultiplier(PS->SortedCharacter->DriveVelocityMultiplier);
 
-			// IncomingDamage é um meta-atributo só pra calcular o dano no momento da porrada, então nasce zerado
 			PlayerAttributes->InitIncomingDamage(0.0f);
 
-			// FIX: Atualiza o componente de movimento manualmente na inicialização
 			if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 			{
 				MoveComp->MaxWalkSpeed = PS->SortedCharacter->Speed;
@@ -109,6 +155,8 @@ void APlayerCharacter::PossessedBy(AController* NewController)
 			UE_LOG(LogTemp, Warning, TEXT("Status applied with success directly from SortedCharacter to GAS!"));
 		}
 	}
+
+	TryFinishSetup();
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
