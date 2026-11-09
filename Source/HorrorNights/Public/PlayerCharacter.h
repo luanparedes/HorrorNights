@@ -63,6 +63,34 @@ public:
 protected:
     bool bIsInventoryOpen = false;
 
+    /**
+     * Chamado UMA vez quando o personagem ja rodou o BeginPlay E ja tem controller.
+     * Use no lugar do BeginPlay para tudo que depende do controller (HUD, efeitos iniciais de GAS).
+     *
+     * Por que existe: no spawn inicial o personagem eh possuido antes do BeginPlay, mas num
+     * respawn no meio da partida (ex.: troca de personagem via cheat) o BeginPlay roda ANTES
+     * de ter controller. Este evento funciona nas duas ordens.
+     */
+    UFUNCTION(BlueprintImplementableEvent, Category = "Player")
+    void OnPlayerReady();
+
+    /** Garante que o OnPlayerReady rode uma unica vez neste personagem. */
+    bool bPlayerReady = false;
+
+    /** Garante que os cheats sejam aplicados uma unica vez neste personagem. */
+    bool bCheatsApplied = false;
+
+    /**
+     * Chamado no BeginPlay e no PossessedBy (e no cliente quando o controller chega);
+     * quem chegar por ultimo finaliza: input, OnPlayerReady e cheats.
+     */
+    void TryFinishSetup();
+
+    /** Aplica os cheats ativos (so no servidor). Chamado pelo TryFinishSetup. */
+    void TryApplyCheats();
+
+    virtual void NotifyControllerChanged() override;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities", meta = (AllowPrivateAccess = "true"))
     UAbilitySystemComponent* AbilitySystemComponent;
 
@@ -73,6 +101,7 @@ protected:
     UUserWidget* InventoryWidgetInstance;
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
 	void OpenInventory(const FInputActionValue& Value);

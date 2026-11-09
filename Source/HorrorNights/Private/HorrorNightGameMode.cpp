@@ -3,6 +3,8 @@
 
 #include "HorrorNightGameMode.h"
 #include "CharacterState.h"
+#include "CheatSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "PlayerClassData.h"
 #include "RHI.h"
 #include "RenderQualityInterface.h"
@@ -36,6 +38,11 @@ UClass* AHorrorNightGameMode::GetDefaultPawnClassForController_Implementation(AC
 	{
 		UE_LOG(LogTemp, Error, TEXT("Vazou de fininho: O Cast pro seu CharacterState falhou!"));
 		return Super::GetDefaultPawnClassForController_Implementation(InController);
+	}
+
+	if (UCheatSubsystem* cheats = GetGameInstance()->GetSubsystem<UCheatSubsystem>())
+	{
+		characterState->SortedCharacter = cheats->ResolveCharacterClass(characterState->SortedCharacter);
 	}
 
 	if (characterState->SortedCharacter == nullptr)

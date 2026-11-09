@@ -7,9 +7,6 @@
 #include "PlayerClassData.h"
 #include "CharacterState.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class HORRORNIGHTS_API ACharacterState : public APlayerState
 {
