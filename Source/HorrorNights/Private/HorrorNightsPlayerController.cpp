@@ -19,8 +19,6 @@ void AHorrorNightsPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// O atalho de cheats tem o proprio Mapping Context, entao funciona com ou sem personagem
-	// (no main menu nao existe personagem, e na partida o personagem pode morrer/trocar).
 	if (IsLocalController() && CheatMappingContext)
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
@@ -97,7 +95,6 @@ void AHorrorNightsPlayerController::CloseCheatWidget()
 
 	CheatWidgetInstance->RemoveFromParent();
 
-	// Volta ao estado anterior: no menu o cursor continua visivel, na partida some.
 	if (bCursorWasVisible)
 	{
 		SetInputMode(FInputModeGameAndUI());
@@ -110,10 +107,6 @@ void AHorrorNightsPlayerController::CloseCheatWidget()
 	SetShowMouseCursor(bCursorWasVisible);
 }
 
-// ---------------------------------------------------------------------------
-// Ativacao
-// ---------------------------------------------------------------------------
-
 UCheatSubsystem* AHorrorNightsPlayerController::GetCheatSubsystem() const
 {
 	const UGameInstance* GameInstance = GetGameInstance();
@@ -125,20 +118,16 @@ ECheatActivationResult AHorrorNightsPlayerController::RequestActivateCheatByCode
 	const UCheatSubsystem* Cheats = GetCheatSubsystem();
 	const UCheatDefinition* Cheat = Cheats ? Cheats->FindCheatByCode(Code) : nullptr;
 
-	// Troca de personagem abre a intro do personagem novo, que assume input e cursor.
-	// Fecha a caixa antes; se fechar depois, ela esconderia o cursor da intro.
 	if (Cheat && Cheat->bRespawnWhenActivatedInGame && GetPawn() && !Cheats->IsCheatActive(Cheat))
 	{
 		CloseCheatWidget();
 	}
 
-	// Single player / host: este controller ja esta no servidor.
 	if (HasAuthority())
 	{
 		return ActivateAndApply(Code);
 	}
 
-	// Cliente: valida localmente so pra dar feedback imediato e pede ao servidor.
 	if (!Cheat)
 	{
 		return ECheatActivationResult::InvalidCode;
@@ -163,18 +152,15 @@ ECheatActivationResult AHorrorNightsPlayerController::ActivateAndApply(const FSt
 		return ECheatActivationResult::InvalidCode;
 	}
 
-	// Digitar de novo um cheat ja ativo nao reaplica (nao da +50 macas a cada Enter).
 	if (Cheats->IsCheatActive(Cheat))
 	{
 		return ECheatActivationResult::AlreadyActive;
 	}
 
-	// Fica ativo para todos os proximos spawns.
 	Cheats->ActivateCheat(Cheat);
 
 	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn());
 
-	// Cheats como "jogar com personagem X": respawn na hora, no mesmo lugar.
 	if (PlayerCharacter && Cheat->bRespawnWhenActivatedInGame)
 	{
 		return SwapCharacterInPlace()
@@ -182,7 +168,6 @@ ECheatActivationResult AHorrorNightsPlayerController::ActivateAndApply(const FSt
 			: ECheatActivationResult::AppliesOnNextSpawn;
 	}
 
-	// Se ja estamos jogando (existe personagem), aplica agora.
 	if (PlayerCharacter && Cheat->bCanApplyDuringGameplay)
 	{
 		Cheat->ApplyToPlayer(PlayerCharacter);
@@ -202,7 +187,6 @@ bool AHorrorNightsPlayerController::SwapCharacterInPlace()
 	if (!HasAuthority() || !OldCharacter || !GameMode)
 		return false;
 
-	// 1) Guarda o que precisa sobreviver a troca.
 	const FTransform SpawnTransform(OldCharacter->GetActorRotation(), OldCharacter->GetActorLocation());
 	const FRotator SavedControlRotation = GetControlRotation();
 
@@ -212,18 +196,13 @@ bool AHorrorNightsPlayerController::SwapCharacterInPlace()
 		SavedItems = OldCharacter->Inventory->InventoryItems;
 	}
 
-	// Enquanto for true, o personagem novo sabe que eh troca (nao reaplica itens).
 	TGuardValue<bool> SwapGuard(bIsSwappingCharacter, true);
 
-	// 2) Remove o personagem atual primeiro, pra liberar o espaco pro novo.
 	UnPossess();
 	OldCharacter->Destroy();
 
-	// 3) Respawn no mesmo lugar. O GameMode chama GetDefaultPawnClassForController,
-	//    que passa pelos cheats e devolve a classe nova. HP/status vem cheios da classe nova.
 	GameMode->RestartPlayerAtTransform(this, SpawnTransform);
 
-	// Se nao coube ali (capsula maior, parede...), nasce num PlayerStart pra nunca ficar sem pawn.
 	if (!GetPawn())
 	{
 		UE_LOG(LogCheatController, Warning, TEXT("Could not respawn in place, using a PlayerStart."));
@@ -239,7 +218,6 @@ bool AHorrorNightsPlayerController::SwapCharacterInPlace()
 
 	SetControlRotation(SavedControlRotation);
 
-	// 4) Devolve o inventario.
 	if (NewCharacter->Inventory)
 	{
 		for (const TPair<UItemData*, int32>& Pair : SavedItems)

@@ -8,7 +8,6 @@
 
 class UItemData;
 
-/** Cheat: o jogador ja nasce com estes itens no inventario. */
 UCLASS(meta = (DisplayName = "Cheat - Starting Items"))
 class HORRORNIGHTS_API UCheatStartingItems : public UCheatDefinition
 {
@@ -17,7 +16,6 @@ class HORRORNIGHTS_API UCheatStartingItems : public UCheatDefinition
 public:
 	UCheatStartingItems();
 
-	/** Item -> quantidade. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cheat|Items")
 	TMap<TObjectPtr<UItemData>, int32> Items;
 

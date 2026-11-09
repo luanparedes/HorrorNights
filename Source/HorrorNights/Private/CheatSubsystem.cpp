@@ -29,13 +29,11 @@ void UCheatSubsystem::LoadAvailableCheats()
 		return;
 	}
 
-	// Pergunta ao Asset Manager por todos os assets do tipo "Cheat" (configurado no DefaultGame.ini).
 	TArray<FSoftObjectPath> CheatPaths;
 	AssetManager->GetPrimaryAssetPathList(UCheatDefinition::GetCheatAssetType(), CheatPaths);
 
 	for (const FSoftObjectPath& Path : CheatPaths)
 	{
-		// Data assets pequenos: carregar sincrono na inicializacao eh ok.
 		UCheatDefinition* Cheat = Cast<UCheatDefinition>(Path.TryLoad());
 		if (!Cheat)
 		{
@@ -173,7 +171,6 @@ void UCheatSubsystem::ApplyCheatsToPlayer(APlayerCharacter* Player, bool bIsChar
 
 	for (UCheatDefinition* Cheat : ActiveCheats)
 	{
-		// Na troca de personagem, pula o que ja veio transferido (ex: itens no inventario).
 		if (Cheat && bIsCharacterSwap && !Cheat->bReapplyOnCharacterSwap)
 		{
 			continue;
@@ -187,12 +184,6 @@ void UCheatSubsystem::ApplyCheatsToPlayer(APlayerCharacter* Player, bool bIsChar
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Comandos de console (abrir com ~):
-//   HN.Cheat <codigo>   -> ativa pelo codigo
-//   HN.Cheat.List       -> lista disponiveis e ativos
-//   HN.Cheat.Clear      -> desativa todos
-// ---------------------------------------------------------------------------
 namespace CheatConsole
 {
 	static UCheatSubsystem* GetSubsystem(UWorld* World)
@@ -211,7 +202,6 @@ namespace CheatConsole
 
 			const FString Code = FString::Join(Args, TEXT(" "));
 
-			// Mesmo caminho do WBP: ativa e, se estiver jogando, aplica na hora.
 			if (AHorrorNightsPlayerController* PC = Cast<AHorrorNightsPlayerController>(World->GetFirstPlayerController()))
 			{
 				const ECheatActivationResult Result = PC->RequestActivateCheatByCode(Code);

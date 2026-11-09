@@ -8,11 +8,6 @@
 
 class UGameplayEffect;
 
-/**
- * Cheat: aplica Gameplay Effects (GAS) no jogador ao nascer.
- * Serve para quase tudo que mexe em atributo: modo deus (GE infinito de HP),
- * super velocidade, ataque x10, energia infinita etc. — basta criar o GE.
- */
 UCLASS(meta = (DisplayName = "Cheat - Gameplay Effects"))
 class HORRORNIGHTS_API UCheatGameplayEffects : public UCheatDefinition
 {

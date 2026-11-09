@@ -50,8 +50,6 @@ void APlayerCharacter::NotifyControllerChanged()
 {
 	Super::NotifyControllerChanged();
 
-	// No servidor quem finaliza eh o PossessedBy (depois de iniciar os atributos).
-	// Aqui cobre o cliente em multiplayer, que nao recebe PossessedBy.
 	if (!HasAuthority())
 	{
 		TryFinishSetup();
@@ -67,7 +65,6 @@ void APlayerCharacter::TryFinishSetup()
 
 	bPlayerReady = true;
 
-	// Input do personagem: precisa do controller, por isso nao fica mais no BeginPlay.
 	if (APlayerController* playerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(playerController->GetLocalPlayer()))
@@ -76,10 +73,7 @@ void APlayerCharacter::TryFinishSetup()
 		}
 	}
 
-	// Blueprint: cria o HUD e aplica os efeitos iniciais (ex.: GE_EnergyDrain).
 	OnPlayerReady();
-
-	// Cheats depois, assim o HUD ja esta ouvindo quando os atributos mudarem.
 	TryApplyCheats();
 }
 

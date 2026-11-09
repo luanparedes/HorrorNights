@@ -6,7 +6,6 @@
 
 UCheatStartingItems::UCheatStartingItems()
 {
-	// Na troca de personagem o inventario eh transferido: reaplicar duplicaria os itens.
 	bReapplyOnCharacterSwap = false;
 }
 
