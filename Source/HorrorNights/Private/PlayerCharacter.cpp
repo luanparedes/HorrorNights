@@ -232,7 +232,27 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		enhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		enhancedInputComponent->BindAction(OpenInventoryAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenInventory);
 		enhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
+		enhancedInputComponent->BindAction(AttackPrepareAction, ETriggerEvent::Started, this, &APlayerCharacter::StartPrepareAttack);
+		enhancedInputComponent->BindAction(AttackPrepareAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopPrepareAttack);
+		enhancedInputComponent->BindAction(AttackPrepareAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopPrepareAttack);
+		enhancedInputComponent->BindAction(AttackTriggerAction, ETriggerEvent::Started, this, &APlayerCharacter::TriggerAttack);
 	}
+}
+
+void APlayerCharacter::StartPrepareAttack(const FInputActionValue& Value)
+{
+	bIsPreparingAttack = true;
+}
+void APlayerCharacter::TriggerAttack(const FInputActionValue& Value)
+{
+	if (bIsPreparingAttack)
+	{
+		Attack();
+	}
+}
+void APlayerCharacter::StopPrepareAttack(const FInputActionValue& Value)
+{
+	bIsPreparingAttack = false;
 }
 
 void APlayerCharacter::Attack()
