@@ -73,6 +73,7 @@ protected:
     bool bIsInventoryOpen = false;
     bool bPlayerReady = false;
     bool bCheatsApplied = false;
+	bool bIsPreparingAttack = false;
 
     UFUNCTION(BlueprintImplementableEvent, Category = "Player")
     void OnPlayerReady();
@@ -86,6 +87,9 @@ protected:
     void Look(const FInputActionValue& Value);
 	void OpenInventory(const FInputActionValue& Value);
     void Interact(const FInputActionValue& Value);
+    void StartPrepareAttack(const FInputActionValue& Value);
+    void TriggerAttack(const FInputActionValue& Value);
+	void StopPrepareAttack(const FInputActionValue& Value);
 
 private:
     UPROPERTY(EditAnywhere)
@@ -111,4 +115,10 @@ private:
 
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* InteractAction;
+
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* AttackPrepareAction;
+
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* AttackTriggerAction;
 };
