@@ -6,16 +6,23 @@
 #include "GameFramework/Actor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/SkyLight.h"
-#include "EnemyIntelligentSpawner.h"
 #include "ChangeTimeMessageWidget.h"
 #include "TimeManager.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTimeOfDayChanged);
 
 UCLASS()
 class HORRORNIGHTS_API ATimeManager : public AActor
 {
 	GENERATED_BODY()
-	
+
 public:
+	UPROPERTY(BlueprintAssignable, Category = "Time Manager")
+	FOnTimeOfDayChanged OnNightStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Time Manager")
+	FOnTimeOfDayChanged OnDayStarted;
+
 	ATimeManager();
 	virtual void Tick(float DeltaTime) override;
 
@@ -49,9 +56,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Time Manager")
 	ASkyLight* SkyLight;
-
-	UPROPERTY(EditAnywhere, Category = "Spawn Manager")
-	AEnemyIntelligentSpawner* EnemySpawner;
 
 	UPROPERTY(EditAnywhere, Category = "Time Manager|SkyLight")
 	float NightSunHeight = -0.1f;
