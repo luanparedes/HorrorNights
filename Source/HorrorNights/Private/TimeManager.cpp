@@ -97,10 +97,7 @@ void ATimeManager::StartNight()
 	{
 		//MoonLight->GetLightComponent()->SetVisibility(true);
 	}
-	if (EnemySpawner)
-	{
-		EnemySpawner->BeginNight();
-	}
+	OnNightStarted.Broadcast();
 }
 
 void ATimeManager::StartDay()
@@ -115,10 +112,7 @@ void ATimeManager::StartDay()
 	{
 		//MoonLight->GetLightComponent()->SetVisibility(false);
 	}
-	if (EnemySpawner)
-	{
-		EnemySpawner->BeginDay();
-	}
+	OnDayStarted.Broadcast();
 }
 
 void ATimeManager::ShowChangeTimeMessage(const FString& Message)
