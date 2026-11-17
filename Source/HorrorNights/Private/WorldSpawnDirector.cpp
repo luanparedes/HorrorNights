@@ -7,6 +7,7 @@
 #include "TimeManager.h"
 #include "EnemyCharacter.h"
 #include "Item.h"
+#include "AnimalCharacter.h"
 #include "AIController.h"
 #include "BrainComponent.h"
 #include "NavigationSystem.h"
@@ -40,6 +41,12 @@ AWorldSpawnDirector::AWorldSpawnDirector()
 	ItemRules.ObservationDistance = 6000.f;
 	ItemRules.MinDistanceFromPlayers = 1500.f;
 	ItemRules.MaxActive = 0;
+
+	AnimalRules.MaterializeDistance = 12000.f;
+	AnimalRules.DematerializeDistance = 15000.f;
+	AnimalRules.ObservationDistance = 9000.f;
+	AnimalRules.MinDistanceFromPlayers = 2500.f;
+	AnimalRules.MaxActive = 30;
 }
 
 void AWorldSpawnDirector::BeginPlay()
@@ -77,6 +84,17 @@ void AWorldSpawnDirector::BeginPlay()
 		GenerateItemRecords();
 	}
 
+	if (AnimalTable)
+	{
+		AnimalTargetCount = AnimalTable->GetTargetCount();
+		AddAnimalRecords(AnimalTargetCount);
+		UE_LOG(LogSpawnDirector, Log, TEXT("%d animais espalhados pelo mapa."), AnimalRecords.Num());
+	}
+	else
+	{
+		UE_LOG(LogSpawnDirector, Warning, TEXT("AnimalTable não configurada."));
+	}
+
 	if (bStartAtNight)
 	{
 		BeginNight();
@@ -95,10 +113,6 @@ void AWorldSpawnDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	Super::EndPlay(EndPlayReason);
 }
-
-// ---------------------------------------------------------------------------
-// Ciclo dia / noite
-// ---------------------------------------------------------------------------
 
 void AWorldSpawnDirector::BeginNight()
 {
@@ -132,13 +146,18 @@ void AWorldSpawnDirector::BeginDay()
 		{
 			if (AActor* Monster = Record.Actor.Get())
 			{
-				SendAway(Monster, true, Viewers);
+				SendAway(Monster, ESpawnCategory::Monster, Viewers);
 			}
 		}
 	}
 	MonsterRecords.Reset();
 
 	ResetItems();
+
+	if (AnimalTable && AnimalTable->bRefillAtDawn)
+	{
+		RefillAnimals();
+	}
 }
 
 void AWorldSpawnDirector::ResetItems()
@@ -157,7 +176,7 @@ void AWorldSpawnDirector::ResetItems()
 		{
 			if (AActor* Item = Record.Actor.Get())
 			{
-				SendAway(Item, false, Viewers);
+				SendAway(Item, ESpawnCategory::Item, Viewers);
 			}
 		}
 	}
@@ -165,9 +184,22 @@ void AWorldSpawnDirector::ResetItems()
 	GenerateItemRecords();
 }
 
-// ---------------------------------------------------------------------------
-// Geração das fichas
-// ---------------------------------------------------------------------------
+void AWorldSpawnDirector::RefillAnimals()
+{
+	if (!HasAuthority() || !AnimalTable)
+	{
+		return;
+	}
+
+	AnimalRecords.RemoveAll([](const FSpawnRecord& Record) { return Record.State == ESpawnRecordState::Gone; });
+
+	const int32 Missing = AnimalTargetCount - AnimalRecords.Num();
+	if (Missing > 0)
+	{
+		AddAnimalRecords(Missing);
+		UE_LOG(LogSpawnDirector, Log, TEXT("Amanhecer: %d animais repostos (%d no mapa)."), Missing, AnimalRecords.Num());
+	}
+}
 
 void AWorldSpawnDirector::GenerateMonsterRecords()
 {
@@ -238,9 +270,84 @@ void AWorldSpawnDirector::GenerateItemRecords()
 	UE_LOG(LogSpawnDirector, Log, TEXT("Novo dia: %d itens espalhados pelo mapa."), ItemRecords.Num());
 }
 
-// ---------------------------------------------------------------------------
-// Distribuição pelo cenário
-// ---------------------------------------------------------------------------
+void AWorldSpawnDirector::AddAnimalRecords(int32 Count)
+{
+	if (!AnimalTable || Count <= 0)
+	{
+		return;
+	}
+
+	TArray<FVector2D> Points;
+	ScatterPoints(Count, AnimalTable->MinSpacing, Points);
+
+	const double Now = GetWorld()->GetTimeSeconds();
+
+	for (const FVector2D& Point : Points)
+	{
+		const int32 EntryIndex = AnimalTable->PickEntryIndex();
+		if (EntryIndex == INDEX_NONE)
+		{
+			break;
+		}
+
+		const FAnimalSpawnEntry& Entry = AnimalTable->Entries[EntryIndex];
+
+		FSpawnRecord& Record = AnimalRecords.AddDefaulted_GetRef();
+		Record.Position = Point;
+		Record.EntryIndex = EntryIndex;
+		Record.ActivationTime = Now;
+		Record.Scale = FMath::FRandRange(FMath::Min(Entry.MinScale, Entry.MaxScale), FMath::Max(Entry.MinScale, Entry.MaxScale));
+		Record.WanderDirection = FVector2D(FMath::VRand()).GetSafeNormal();
+	}
+}
+
+void AWorldSpawnDirector::WanderVirtualAnimals()
+{
+	if (!AnimalTable || AnimalTable->VirtualWanderSpeed <= 0.f)
+	{
+		return;
+	}
+
+	const float Step = AnimalTable->VirtualWanderSpeed * UpdateInterval;
+
+	for (FSpawnRecord& Record : AnimalRecords)
+	{
+		if (Record.State != ESpawnRecordState::Virtual)
+		{
+			continue;
+		}
+
+		if (Record.WanderDirection.IsNearlyZero() || FMath::FRand() < 0.05f)
+		{
+			Record.WanderDirection = FVector2D(FMath::VRand()).GetSafeNormal();
+		}
+
+		const FVector2D Next = Record.Position + Record.WanderDirection * Step;
+
+		if (IsInsideArea(Next) && !IsInsideExclusionZone(Next))
+		{
+			Record.Position = Next;
+			Record.bGroundResolved = false;
+		}
+		else
+		{
+			Record.WanderDirection = -Record.WanderDirection;
+		}
+	}
+}
+
+const FSpawnStreamingRules& AWorldSpawnDirector::GetRules(ESpawnCategory Category) const
+{
+	switch (Category)
+	{
+	case ESpawnCategory::Monster:
+		return MonsterRules;
+	case ESpawnCategory::Animal:
+		return AnimalRules;
+	default:
+		return ItemRules;
+	}
+}
 
 FVector2D AWorldSpawnDirector::RandomPointInArea() const
 {
@@ -271,8 +378,6 @@ bool AWorldSpawnDirector::IsInsideExclusionZone(const FVector2D& Position) const
 	return false;
 }
 
-// Espalha pontos de forma uniforme pelo cenário inteiro, mantendo uma distância
-// mínima entre eles (evita os grupos que nasciam juntos nas âncoras).
 void AWorldSpawnDirector::ScatterPoints(int32 Count, float MinSpacing, TArray<FVector2D>& OutPoints) const
 {
 	OutPoints.Reset();
@@ -290,7 +395,6 @@ void AWorldSpawnDirector::ScatterPoints(int32 Count, float MinSpacing, TArray<FV
 		return FIntPoint(FMath::FloorToInt(Point.X / Spacing), FMath::FloorToInt(Point.Y / Spacing));
 	};
 
-	// Se a área for pequena demais para o espaçamento pedido, ele é reduzido aos poucos
 	for (int32 Pass = 0; Pass < 4 && OutPoints.Num() < Count; ++Pass)
 	{
 		Grid.Reset();
@@ -387,8 +491,6 @@ EGroundResult AWorldSpawnDirector::ResolveGround(const FVector2D& Position, bool
 		return EGroundResult::NotLoaded;
 	}
 
-	// Projeta no NavMesh: corrige pontos que caíram em cima de árvores ou pedras
-	// e garante que o monstro consegue andar dali
 	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
 	{
 		FNavLocation NavLocation;
@@ -407,10 +509,6 @@ EGroundResult AWorldSpawnDirector::ResolveGround(const FVector2D& Position, bool
 
 	return EGroundResult::Invalid;
 }
-
-// ---------------------------------------------------------------------------
-// Visão dos jogadores
-// ---------------------------------------------------------------------------
 
 void AWorldSpawnDirector::GatherViewers(TArray<FSpawnViewer>& OutViewers) const
 {
@@ -501,10 +599,6 @@ bool AWorldSpawnDirector::IsActorObserved(const AActor* Actor, float Observation
 	return IsObserved(Origin - FVector(0.f, 0.f, Extent.Z), Extent.Z * 2.f, ObservationDistance, Viewers, Actor);
 }
 
-// ---------------------------------------------------------------------------
-// Atualização periódica
-// ---------------------------------------------------------------------------
-
 void AWorldSpawnDirector::UpdatePopulation()
 {
 	TArray<FSpawnViewer> Viewers;
@@ -519,10 +613,13 @@ void AWorldSpawnDirector::UpdatePopulation()
 
 	if (bIsNight)
 	{
-		UpdateRecords(MonsterRecords, MonsterRules, true, Viewers);
+		UpdateRecords(MonsterRecords, MonsterRules, ESpawnCategory::Monster, Viewers);
 	}
 
-	UpdateRecords(ItemRecords, ItemRules, false, Viewers);
+	UpdateRecords(ItemRecords, ItemRules, ESpawnCategory::Item, Viewers);
+
+	WanderVirtualAnimals();
+	UpdateRecords(AnimalRecords, AnimalRules, ESpawnCategory::Animal, Viewers);
 
 	if (bDrawDebug)
 	{
@@ -530,8 +627,9 @@ void AWorldSpawnDirector::UpdatePopulation()
 	}
 }
 
-void AWorldSpawnDirector::UpdateRecords(TArray<FSpawnRecord>& Records, const FSpawnStreamingRules& Rules, bool bMonsters, const TArray<FSpawnViewer>& Viewers)
+void AWorldSpawnDirector::UpdateRecords(TArray<FSpawnRecord>& Records, const FSpawnStreamingRules& Rules, ESpawnCategory Category, const TArray<FSpawnViewer>& Viewers)
 {
+	const bool bCreature = Category != ESpawnCategory::Item;
 	const double Now = GetWorld()->GetTimeSeconds();
 	int32 ActiveCount = 0;
 	int32 DematerializeBudget = MaxDematerializationsPerUpdate;
@@ -555,11 +653,10 @@ void AWorldSpawnDirector::UpdateRecords(TArray<FSpawnRecord>& Records, const FSp
 				continue;
 			}
 
-			// Só some quando ninguém está por perto e ninguém está olhando
 			const float Distance = DistanceToNearestViewer2D(FVector2D(Actor->GetActorLocation()), Viewers);
 			if (Distance > Rules.DematerializeDistance && DematerializeBudget > 0 && !IsActorObserved(Actor, Rules.ObservationDistance, Viewers))
 			{
-				DematerializeRecord(Record, bMonsters);
+				DematerializeRecord(Record, Category);
 				--DematerializeBudget;
 				continue;
 			}
@@ -597,11 +694,10 @@ void AWorldSpawnDirector::UpdateRecords(TArray<FSpawnRecord>& Records, const FSp
 		if (!Record.bGroundResolved)
 		{
 			FVector Ground;
-			EGroundResult Result = ResolveGround(Record.Position, bMonsters, Ground);
+			EGroundResult Result = ResolveGround(Record.Position, bCreature, Ground);
 
 			if (Result == EGroundResult::NotLoaded)
 			{
-				// Longe: o chão só não carregou ainda. Perto: é um buraco/fora do mapa
 				if (Candidate.Key > GuaranteedLoadedRadius)
 				{
 					continue;
@@ -619,14 +715,25 @@ void AWorldSpawnDirector::UpdateRecords(TArray<FSpawnRecord>& Records, const FSp
 			Record.bGroundResolved = true;
 		}
 
-		// Nunca nasce na frente de um jogador
-		const float Height = bMonsters ? 200.f * Record.Scale : 60.f;
+		const float Height = bCreature ? 200.f * Record.Scale : 60.f;
 		if (IsObserved(Record.GroundLocation, Height, Rules.ObservationDistance, Viewers, nullptr))
 		{
 			continue;
 		}
 
-		AActor* Spawned = bMonsters ? SpawnMonster(Record) : SpawnItem(Record);
+		AActor* Spawned = nullptr;
+		switch (Category)
+		{
+		case ESpawnCategory::Monster:
+			Spawned = SpawnMonster(Record);
+			break;
+		case ESpawnCategory::Animal:
+			Spawned = SpawnAnimal(Record);
+			break;
+		default:
+			Spawned = SpawnItem(Record);
+			break;
+		}
 		--SpawnBudget;
 
 		if (Spawned)
@@ -663,7 +770,7 @@ void AWorldSpawnDirector::UpdateDeparting(const TArray<FSpawnViewer>& Viewers)
 			continue;
 		}
 
-		const float ObservationDistance = Departing.bIsMonster ? MonsterRules.ObservationDistance : ItemRules.ObservationDistance;
+		const float ObservationDistance = GetRules(Departing.Category).ObservationDistance;
 
 		if (!IsActorObserved(Actor, ObservationDistance, Viewers))
 		{
@@ -698,11 +805,16 @@ void AWorldSpawnDirector::DrawDebugRecords() const
 			DrawDebugPoint(GetWorld(), FVector(Record.Position, Z + 100.f), 10.f, FColor::Green, false, Lifetime);
 		}
 	}
-}
 
-// ---------------------------------------------------------------------------
-// Criação e remoção de atores
-// ---------------------------------------------------------------------------
+	for (const FSpawnRecord& Record : AnimalRecords)
+	{
+		if (Record.State == ESpawnRecordState::Virtual)
+		{
+			const float Z = Record.bGroundResolved ? Record.GroundLocation.Z : SpawnArea->GetComponentLocation().Z;
+			DrawDebugPoint(GetWorld(), FVector(Record.Position, Z + 100.f), 12.f, FColor::Yellow, false, Lifetime);
+		}
+	}
+}
 
 AActor* AWorldSpawnDirector::SpawnMonster(const FSpawnRecord& Record)
 {
@@ -747,7 +859,6 @@ AActor* AWorldSpawnDirector::SpawnMonster(const FSpawnRecord& Record)
 		return nullptr;
 	}
 
-	// HP guardado de quando ele voltou a ser ficha (tomou dano e o jogador se afastou)
 	if (Record.SavedHP >= 0 && Monster->EnemyStats)
 	{
 		Monster->EnemyStats->HP = Record.SavedHP;
@@ -777,7 +888,6 @@ AActor* AWorldSpawnDirector::SpawnItem(const FSpawnRecord& Record)
 		return nullptr;
 	}
 
-	// O AItem faz SnapToGround no BeginPlay, então basta nascer um pouco acima do chão
 	const FTransform SpawnTransform(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), Record.GroundLocation + FVector(0.f, 0.f, 50.f));
 
 	AItem* Item = GetWorld()->SpawnActorDeferred<AItem>(Entry.ItemClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
@@ -805,7 +915,57 @@ AActor* AWorldSpawnDirector::SpawnItem(const FSpawnRecord& Record)
 	return Item;
 }
 
-void AWorldSpawnDirector::DematerializeRecord(FSpawnRecord& Record, bool bMonsters)
+AActor* AWorldSpawnDirector::SpawnAnimal(const FSpawnRecord& Record)
+{
+	if (!AnimalTable || !AnimalTable->Entries.IsValidIndex(Record.EntryIndex))
+	{
+		return nullptr;
+	}
+
+	const TSubclassOf<AAnimalCharacter> AnimalClass = AnimalTable->Entries[Record.EntryIndex].AnimalClass;
+	if (!AnimalClass)
+	{
+		return nullptr;
+	}
+
+	float CapsuleHalfHeight = 90.f;
+	if (const ACharacter* DefaultCharacter = AnimalClass->GetDefaultObject<ACharacter>())
+	{
+		if (const UCapsuleComponent* Capsule = DefaultCharacter->GetCapsuleComponent())
+		{
+			CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+		}
+	}
+
+	const FVector Location = Record.GroundLocation + FVector(0.f, 0.f, CapsuleHalfHeight * Record.Scale + 10.f);
+	const FTransform SpawnTransform(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), Location, FVector(Record.Scale));
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	AAnimalCharacter* Animal = GetWorld()->SpawnActor<AAnimalCharacter>(AnimalClass, SpawnTransform, Params);
+	if (!IsValid(Animal))
+	{
+		return nullptr;
+	}
+
+	if (Record.SavedHP > 0)
+	{
+		Animal->SetCurrentHP(Record.SavedHP);
+	}
+
+	if (!Animal->GetController())
+	{
+		Animal->SpawnDefaultController();
+	}
+
+	TrackActor(Animal);
+	EnsurePresence(Animal)->PlayAppear();
+
+	return Animal;
+}
+
+void AWorldSpawnDirector::DematerializeRecord(FSpawnRecord& Record, ESpawnCategory Category)
 {
 	AActor* Actor = Record.Actor.Get();
 	Record.Actor.Reset();
@@ -816,9 +976,8 @@ void AWorldSpawnDirector::DematerializeRecord(FSpawnRecord& Record, bool bMonste
 		return;
 	}
 
-	if (bMonsters)
+	if (Category != ESpawnCategory::Item)
 	{
-		// Monstros andam: guarda onde ele estava e quanto de vida tinha
 		Record.Position = FVector2D(Actor->GetActorLocation());
 		Record.bGroundResolved = false;
 
@@ -834,19 +993,27 @@ void AWorldSpawnDirector::DematerializeRecord(FSpawnRecord& Record, bool bMonste
 				}
 			}
 		}
+		else if (const AAnimalCharacter* Animal = Cast<AAnimalCharacter>(Actor))
+		{
+			Record.SavedHP = Animal->GetCurrentHP();
+
+			if (Animal->IsDead() || Record.SavedHP <= 0)
+			{
+				Record.State = ESpawnRecordState::Gone;
+			}
+		}
 	}
 
 	ReleaseActor(Actor);
 	Actor->Destroy();
 }
 
-void AWorldSpawnDirector::SendAway(AActor* Actor, bool bIsMonster, const TArray<FSpawnViewer>& Viewers)
+void AWorldSpawnDirector::SendAway(AActor* Actor, ESpawnCategory Category, const TArray<FSpawnViewer>& Viewers)
 {
 	ReleaseActor(Actor);
 
-	const float ObservationDistance = bIsMonster ? MonsterRules.ObservationDistance : ItemRules.ObservationDistance;
+	const float ObservationDistance = GetRules(Category).ObservationDistance;
 
-	// Ninguém vendo: some na hora, ninguém percebe
 	if (!IsActorObserved(Actor, ObservationDistance, Viewers))
 	{
 		Actor->Destroy();
@@ -855,11 +1022,10 @@ void AWorldSpawnDirector::SendAway(AActor* Actor, bool bIsMonster, const TArray<
 
 	FDepartingActor& Departing = DepartingActors.AddDefaulted_GetRef();
 	Departing.Actor = Actor;
-	Departing.bIsMonster = bIsMonster;
+	Departing.Category = Category;
 
-	if (bIsMonster)
+	if (Category == ESpawnCategory::Monster)
 	{
-		// Alguém vendo: o monstro foge do jogador e some quando sair da vista
 		Departing.Deadline = GetWorld()->GetTimeSeconds() + RetreatTimeout;
 
 		if (AEnemyCharacter* Monster = Cast<AEnemyCharacter>(Actor))
@@ -867,7 +1033,6 @@ void AWorldSpawnDirector::SendAway(AActor* Actor, bool bIsMonster, const TArray<
 			StartRetreat(Monster, Viewers);
 		}
 	}
-	// Itens sendo vistos ficam até o jogador olhar para outro lado (ou pegar)
 }
 
 void AWorldSpawnDirector::StartRetreat(AEnemyCharacter* Monster, const TArray<FSpawnViewer>& Viewers) const
@@ -938,10 +1103,9 @@ USpawnPresenceComponent* AWorldSpawnDirector::EnsurePresence(AActor* Actor) cons
 	return Cast<USpawnPresenceComponent>(Actor->AddComponentByClass(USpawnPresenceComponent::StaticClass(), false, FTransform::Identity, false));
 }
 
-// Destruído por fora do diretor = monstro morto ou item coletado: não volta mais
 void AWorldSpawnDirector::HandleSpawnedActorDestroyed(AActor* DestroyedActor)
 {
-	for (TArray<FSpawnRecord>* Records : { &MonsterRecords, &ItemRecords })
+	for (TArray<FSpawnRecord>* Records : { &MonsterRecords, &ItemRecords, &AnimalRecords })
 	{
 		for (FSpawnRecord& Record : *Records)
 		{
