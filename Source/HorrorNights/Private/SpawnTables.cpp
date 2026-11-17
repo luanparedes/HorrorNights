@@ -3,6 +3,7 @@
 
 #include "SpawnTables.h"
 #include "EnemyCharacter.h"
+#include "AnimalCharacter.h"
 #include "Item.h"
 
 namespace
@@ -81,10 +82,28 @@ int32 UItemSpawnTable::GetCountForDay() const
 	return FMath::RandRange(FMath::Min(MinCount, MaxCount), FMath::Max(MinCount, MaxCount));
 }
 
-int32 UItemSpawnTable::PickEntryIndex() const
+int32 PickWeightedItemEntry(const TArray<FItemSpawnEntry>& Entries)
 {
 	return PickWeightedIndex(Entries, [](const FItemSpawnEntry& Entry)
 	{
 		return Entry.ItemClass != nullptr;
+	});
+}
+
+int32 UItemSpawnTable::PickEntryIndex() const
+{
+	return PickWeightedItemEntry(Entries);
+}
+
+int32 UAnimalSpawnTable::GetTargetCount() const
+{
+	return FMath::RandRange(FMath::Min(MinCount, MaxCount), FMath::Max(MinCount, MaxCount));
+}
+
+int32 UAnimalSpawnTable::PickEntryIndex() const
+{
+	return PickWeightedIndex(Entries, [](const FAnimalSpawnEntry& Entry)
+	{
+		return Entry.AnimalClass != nullptr;
 	});
 }

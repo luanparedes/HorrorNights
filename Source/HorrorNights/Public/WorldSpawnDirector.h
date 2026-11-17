@@ -10,6 +10,7 @@
 class UBoxComponent;
 class UMonsterSpawnTable;
 class UItemSpawnTable;
+class UAnimalSpawnTable;
 class ATimeManager;
 class AEnemyCharacter;
 class USpawnPresenceComponent;
@@ -31,25 +32,27 @@ struct FSpawnStreamingRules
 {
 	GENERATED_BODY()
 
-	// Abaixo desta distância de algum jogador o ator físico é criado
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ClampMin = "0"))
 	float MaterializeDistance = 15000.f;
 
-	// Acima desta distância de todos os jogadores o ator volta a ser só uma ficha
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ClampMin = "0"))
 	float DematerializeDistance = 18000.f;
 
-	// Até onde um jogador consegue enxergar este tipo de ator
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ClampMin = "0"))
 	float ObservationDistance = 10000.f;
 
-	// Nunca nasce mais perto que isso de um jogador, mesmo fora da visão
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ClampMin = "0"))
 	float MinDistanceFromPlayers = 3000.f;
 
-	// Limite de atores físicos ao mesmo tempo (0 = sem limite)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ClampMin = "0"))
 	int32 MaxActive = 0;
+};
+
+enum class ESpawnCategory : uint8
+{
+	Monster,
+	Item,
+	Animal
 };
 
 enum class ESpawnRecordState : uint8
@@ -66,7 +69,6 @@ enum class EGroundResult : uint8
 	Invalid
 };
 
-// Ficha de um monstro ou item: existe no mapa inteiro, mas só vira ator perto dos jogadores
 struct FSpawnRecord
 {
 	FVector2D Position = FVector2D::ZeroVector;
@@ -82,13 +84,14 @@ struct FSpawnRecord
 	int32 SavedHP = -1;
 	int32 Quantity = 1;
 	int32 RelocationAttempts = 0;
+	FVector2D WanderDirection = FVector2D::ZeroVector;
 };
 
 struct FDepartingActor
 {
 	TWeakObjectPtr<AActor> Actor;
 	double Deadline = -1.0;
-	bool bIsMonster = false;
+	ESpawnCategory Category = ESpawnCategory::Item;
 };
 
 struct FSpawnViewer
@@ -116,6 +119,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Spawn Director")
 	void ResetItems();
 
+	UFUNCTION(BlueprintCallable, Category = "Spawn Director")
+	void RefillAnimals();
+
 	UFUNCTION(BlueprintPure, Category = "Spawn Director")
 	int32 GetNightNumber() const { return NightNumber; }
 
@@ -126,15 +132,12 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	// Estique esta caixa para cobrir todo o cenário jogável
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn Director|Area")
 	TObjectPtr<UBoxComponent> SpawnArea;
 
-	// Áreas onde nada nasce (ex.: a cabana)
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Area")
 	TArray<FSpawnExclusionZone> ExclusionZones;
 
-	// Perto assim de um jogador o chão com certeza está carregado
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Area", meta = (ClampMin = "0"))
 	float GuaranteedLoadedRadius = 6000.f;
 
@@ -144,7 +147,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Tables")
 	TObjectPtr<UItemSpawnTable> ItemTable;
 
-	// Vazio = procura o TimeManager do mapa sozinho
+	UPROPERTY(EditAnywhere, Category = "Spawn Director|Tables")
+	TObjectPtr<UAnimalSpawnTable> AnimalTable;
+
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Time")
 	TObjectPtr<ATimeManager> TimeManager;
 
@@ -154,14 +159,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Time")
 	bool bStartAtNight = false;
 
-	// Os monstros chegam aos poucos ao longo deste tempo depois que a noite começa
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Monsters", meta = (ClampMin = "0"))
 	float NightArrivalWindow = 120.f;
 
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Monsters")
 	FSpawnStreamingRules MonsterRules;
 
-	// Ao amanhecer, monstros sendo vistos fogem; depois deste tempo somem em fade
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Monsters", meta = (ClampMin = "0"))
 	float RetreatTimeout = 25.f;
 
@@ -171,7 +174,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Items")
 	FSpawnStreamingRules ItemRules;
 
-	// Metade do ângulo de visão considerado ao checar se o jogador está olhando
+	UPROPERTY(EditAnywhere, Category = "Spawn Director|Animals")
+	FSpawnStreamingRules AnimalRules;
+
 	UPROPERTY(EditAnywhere, Category = "Spawn Director|Natural", meta = (ClampMin = "1", ClampMax = "180"))
 	float ViewHalfAngleDegrees = 75.f;
 
@@ -190,6 +195,8 @@ protected:
 private:
 	TArray<FSpawnRecord> MonsterRecords;
 	TArray<FSpawnRecord> ItemRecords;
+	TArray<FSpawnRecord> AnimalRecords;
+	int32 AnimalTargetCount = 0;
 	TArray<FDepartingActor> DepartingActors;
 
 	FTimerHandle UpdateTimer;
@@ -197,12 +204,15 @@ private:
 	int32 NightNumber = 0;
 
 	void UpdatePopulation();
-	void UpdateRecords(TArray<FSpawnRecord>& Records, const FSpawnStreamingRules& Rules, bool bMonsters, const TArray<FSpawnViewer>& Viewers);
+	void UpdateRecords(TArray<FSpawnRecord>& Records, const FSpawnStreamingRules& Rules, ESpawnCategory Category, const TArray<FSpawnViewer>& Viewers);
 	void UpdateDeparting(const TArray<FSpawnViewer>& Viewers);
 	void DrawDebugRecords() const;
 
 	void GenerateMonsterRecords();
 	void GenerateItemRecords();
+	void AddAnimalRecords(int32 Count);
+	void WanderVirtualAnimals();
+	const FSpawnStreamingRules& GetRules(ESpawnCategory Category) const;
 
 	void GatherViewers(TArray<FSpawnViewer>& OutViewers) const;
 	float DistanceToNearestViewer2D(const FVector2D& Position, const TArray<FSpawnViewer>& Viewers) const;
@@ -218,8 +228,9 @@ private:
 
 	AActor* SpawnMonster(const FSpawnRecord& Record);
 	AActor* SpawnItem(const FSpawnRecord& Record);
-	void DematerializeRecord(FSpawnRecord& Record, bool bMonsters);
-	void SendAway(AActor* Actor, bool bIsMonster, const TArray<FSpawnViewer>& Viewers);
+	AActor* SpawnAnimal(const FSpawnRecord& Record);
+	void DematerializeRecord(FSpawnRecord& Record, ESpawnCategory Category);
+	void SendAway(AActor* Actor, ESpawnCategory Category, const TArray<FSpawnViewer>& Viewers);
 	void StartRetreat(AEnemyCharacter* Monster, const TArray<FSpawnViewer>& Viewers) const;
 
 	void TrackActor(AActor* Actor);
