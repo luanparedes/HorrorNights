@@ -15,7 +15,14 @@ DEFINE_LOG_CATEGORY_STATIC(LogCheats, Log, All);
 void UCheatSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	LoadAvailableCheats();
+}
+
+void UCheatSubsystem::EnsureCheatsLoaded() const
+{
+	if (!bCheatsLoaded)
+	{
+		const_cast<UCheatSubsystem*>(this)->LoadAvailableCheats();
+	}
 }
 
 void UCheatSubsystem::LoadAvailableCheats()
@@ -28,6 +35,8 @@ void UCheatSubsystem::LoadAvailableCheats()
 		UE_LOG(LogCheats, Error, TEXT("Asset Manager not initialized, no cheats loaded."));
 		return;
 	}
+
+	bCheatsLoaded = true;
 
 	TArray<FSoftObjectPath> CheatPaths;
 	AssetManager->GetPrimaryAssetPathList(UCheatDefinition::GetCheatAssetType(), CheatPaths);
@@ -67,6 +76,8 @@ UCheatDefinition* UCheatSubsystem::FindCheatByCode(const FString& InCode) const
 	const FString Code = InCode.TrimStartAndEnd();
 	if (Code.IsEmpty())
 		return nullptr;
+
+	EnsureCheatsLoaded();
 
 	for (UCheatDefinition* Cheat : AvailableCheats)
 	{
@@ -146,6 +157,7 @@ TArray<UCheatDefinition*> UCheatSubsystem::GetActiveCheats() const
 
 TArray<UCheatDefinition*> UCheatSubsystem::GetAvailableCheats() const
 {
+	EnsureCheatsLoaded();
 	return ObjectPtrDecay(AvailableCheats);
 }
 
