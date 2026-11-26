@@ -58,4 +58,8 @@ private:
 	TArray<TObjectPtr<UCheatDefinition>> ActiveCheats;
 
 	void LoadAvailableCheats();
+
+	// Os cheats só são carregados no primeiro uso: carregá-los no Initialize travava a abertura do jogo
+	void EnsureCheatsLoaded() const;
+	bool bCheatsLoaded = false;
 };
