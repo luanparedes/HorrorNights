@@ -1,6 +1,6 @@
 @echo off
 REM Packages the project for Android without opening the editor.
-REM Equivalent to: Platforms > Android > Package Project (output: Build\Android_<FLAVOR>)
+REM Equivalent to: Platforms > Android > Package Project (output: Packages\Android_<FLAVOR>)
 REM Usage:
 REM   PackageAndroid.bat                   -> ASTC, Development
 REM   PackageAndroid.bat ETC2              -> another texture flavor (ASTC, ETC2, DXT, Multi)
@@ -17,7 +17,7 @@ if not defined UE_ROOT set "UE_ROOT=C:\Users\luans\Epic Games\UE_5.8"
 
 for %%i in ("%~dp0..") do set "PROJECT_DIR=%%~fi"
 set "PROJECT=%PROJECT_DIR%\HorrorNights.uproject"
-set "ARCHIVE_DIR=%PROJECT_DIR%\Build\Android_%FLAVOR%"
+set "ARCHIVE_DIR=%PROJECT_DIR%\Packages\Android_%FLAVOR%"
 set "UAT=%UE_ROOT%\Engine\Build\BatchFiles\RunUAT.bat"
 set "EDITOR_CMD=%UE_ROOT%\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 

@@ -1,14 +1,14 @@
 @echo off
-REM Instala o build Android (Build\Android_ASTC) no celular conectado via USB.
+REM Instala o build Android (Packages\Android_ASTC) no celular conectado via USB.
 REM Requisitos: depuracao USB ativada no celular e adb (Android SDK platform-tools).
 REM Uso:
 REM   InstallAndroid.bat          -> instala o build ASTC
-REM   InstallAndroid.bat ETC2     -> instala outro flavor (Build\Android_ETC2)
+REM   InstallAndroid.bat ETC2     -> instala outro flavor (Packages\Android_ETC2)
 
 setlocal EnableDelayedExpansion
 set "FLAVOR=%~1"
 if "%FLAVOR%"=="" set "FLAVOR=ASTC"
-set "BUILD_DIR=%~dp0..\Build\Android_%FLAVOR%"
+set "BUILD_DIR=%~dp0..\Packages\Android_%FLAVOR%"
 set "PACKAGE=com.SunnymoonSoftwares.HorrorNights"
 
 REM Localiza o adb
@@ -21,7 +21,7 @@ if defined ANDROID_HOME if exist "%ANDROID_HOME%\platform-tools\adb.exe" set "AD
 
 if not exist "%BUILD_DIR%" (
     echo [ERRO] Pasta de build nao encontrada: %BUILD_DIR%
-    echo Empacote o projeto para Android ^(%FLAVOR%^) com destino na pasta Build.
+    echo Rode PackageAndroid.bat %FLAVOR% para gerar o build.
     goto :fail
 )
 

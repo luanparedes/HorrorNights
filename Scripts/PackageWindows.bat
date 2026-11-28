@@ -1,6 +1,6 @@
 @echo off
 REM Packages the project for Windows without opening the editor.
-REM Equivalent to: Platforms > Windows > Package Project (output: Build\Windows)
+REM Equivalent to: Platforms > Windows > Package Project (output: Packages\Windows)
 REM Usage:
 REM   PackageWindows.bat              -> Development
 REM   PackageWindows.bat Shipping     -> another configuration (Development, Shipping, DebugGame, Test)
@@ -13,7 +13,7 @@ if not defined UE_ROOT set "UE_ROOT=C:\Users\luans\Epic Games\UE_5.8"
 
 for %%i in ("%~dp0..") do set "PROJECT_DIR=%%~fi"
 set "PROJECT=%PROJECT_DIR%\HorrorNights.uproject"
-set "ARCHIVE_DIR=%PROJECT_DIR%\Build\Windows"
+set "ARCHIVE_DIR=%PROJECT_DIR%\Packages\Windows"
 set "UAT=%UE_ROOT%\Engine\Build\BatchFiles\RunUAT.bat"
 set "EDITOR_CMD=%UE_ROOT%\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 

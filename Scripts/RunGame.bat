@@ -1,17 +1,17 @@
 @echo off
-REM Roda o build empacotado do Windows (Build\Windows\HorrorNights.exe).
+REM Roda o build empacotado do Windows (Packages\Windows\HorrorNights.exe).
 REM Uso:
 REM   RunGame.bat            -> tela cheia
 REM   RunGame.bat windowed   -> janela 960x540 (bom para testar varias instancias/LAN)
 REM Argumentos extras sao repassados ao jogo (ex: RunGame.bat windowed -log)
 
 setlocal
-set "EXE=%~dp0..\Build\Windows\HorrorNights.exe"
+set "EXE=%~dp0..\Packages\Windows\HorrorNights.exe"
 
 if not exist "%EXE%" (
     echo [ERRO] Executavel nao encontrado:
     echo   %EXE%
-    echo Empacote o projeto para Windows com destino na pasta Build.
+    echo Rode PackageWindows.bat para gerar o build.
     pause
     exit /b 1
 )
